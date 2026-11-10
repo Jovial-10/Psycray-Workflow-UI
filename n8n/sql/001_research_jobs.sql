@@ -27,5 +27,6 @@ CREATE INDEX IF NOT EXISTS research_jobs_execution_id_idx
   ON research_jobs (execution_id);
 
 -- Per-criterion ICP scores so the frontend can show an explainable scorecard.
+-- Shape: { "criteria": [ { criterion, score, max, status, reason } ] }
 ALTER TABLE company_research
   ADD COLUMN IF NOT EXISTS icp_breakdown jsonb;

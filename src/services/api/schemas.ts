@@ -73,7 +73,13 @@ const companyResearchRecord = z.object({
   sources: z.object({ urls: strList }).nullable().catch(null),
   icp_score: z.number().nullable().catch(null),
   icp_tier: icpTier.nullable().catch(null),
-  icp_breakdown: z.array(icpCriterion).nullable().optional().catch(null).transform((v) => v ?? null),
+  // Stored as { criteria: [...] } (the n8n Postgres node rejects bare arrays)
+  icp_breakdown: z
+    .object({ criteria: z.array(icpCriterion) })
+    .nullable()
+    .optional()
+    .catch(null)
+    .transform((v) => v?.criteria ?? null),
   account_brief: str,
 })
 

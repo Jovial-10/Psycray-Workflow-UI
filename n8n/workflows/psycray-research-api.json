@@ -16,8 +16,8 @@
         0
       ],
       "name": "Research Status Request",
-      "webhookId": "942fc121-1198-431a-b486-ba3ca04f8a37",
-      "id": "19f9962d-2244-4498-a019-3d6b011212a9"
+      "webhookId": "5e3f145f-e06b-4c1f-8ba3-36dd4072bd6f",
+      "id": "9e52fce2-0147-493a-9db2-e3a0177c833e"
     },
     {
       "parameters": {
@@ -41,7 +41,7 @@
         }
       },
       "alwaysOutputData": true,
-      "id": "22db6f99-77fc-45fd-9a65-58c7941ad4ed"
+      "id": "8b5fbdb3-173b-4e76-a23d-0b47c0539c77"
     },
     {
       "parameters": {
@@ -54,7 +54,7 @@
           },
           "conditions": [
             {
-              "id": "9a051f1c-7c9c-42e5-b114-8c3b79bded0c",
+              "id": "5c71527b-0da0-4a32-a64a-c278bdfaa2c4",
               "leftValue": "={{ $json.job_id }}",
               "operator": {
                 "type": "string",
@@ -76,7 +76,7 @@
         0
       ],
       "name": "Was Job Found?",
-      "id": "8896e008-e919-439d-8fe4-ccd845d4a8a1"
+      "id": "cd363210-d576-40da-a579-1da012ba6f1a"
     },
     {
       "parameters": {
@@ -93,7 +93,7 @@
         -96
       ],
       "name": "Respond 200 Job",
-      "id": "750ef33d-a35f-48e6-b954-2b383bb9119f"
+      "id": "6d994def-d4f0-4a3b-bc74-51c49d0db924"
     },
     {
       "parameters": {
@@ -110,7 +110,7 @@
         96
       ],
       "name": "Respond 404 Not Found",
-      "id": "ebc3dfe3-2db5-46d9-92a0-35adc2820f9f"
+      "id": "ff5b5f9f-f25d-4f43-b93a-0751ca3d510d"
     },
     {
       "parameters": {},
@@ -121,7 +121,7 @@
         352
       ],
       "name": "Research Agent Failed",
-      "id": "86d62da9-878d-494d-baf4-7e35159e5b10"
+      "id": "276086a9-a52c-40d3-a16f-6f6b568d3896"
     },
     {
       "parameters": {
@@ -144,7 +144,7 @@
           "name": "Postgres account 6"
         }
       },
-      "id": "594e7b9f-77d2-4239-a518-d98972bce36d"
+      "id": "9f4cadd5-dd26-4199-aa9b-3a7c022c7a0c"
     }
   ],
   "pinData": {},

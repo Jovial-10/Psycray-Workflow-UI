@@ -12,8 +12,8 @@ Major changes and decisions, plus what comes next. Newest entries first.
 | | |
 | --- | --- |
 | **Phase** | 2.1: frontend and research dashboard |
-| **State** | Live research flow built and tested against a fake n8n. **Not yet tested against real n8n** |
-| **Blocked on** | n8n setup (import workflows, run SQL), then `.env.local` for the end-to-end test |
+| **State** | UI connected to real n8n. Unreachable and not-found cases pass end to end. **Fresh research blocked by 2 bugs** |
+| **Blocked on** | Re-importing Agent v2 (Bug 1 fix) and finding out what Exa returns for a name search (Bug 2) |
 | **Data source** | Live n8n via `/api` (`VITE_API_MODE=mock` for mock data) |
 
 ---
@@ -28,9 +28,13 @@ Major changes and decisions, plus what comes next. Newest entries first.
 - [x] n8n v2 agent and API workflows (generated, structure and code checked)
 - [x] Frontend: HTTP client, zod validation, job polling, results view
 - [x] Tested against a fake n8n: proxy, secret header, every job outcome, malformed LLM fields
-- [ ] **You:** n8n setup steps 1–7 in [INTEGRATION.md](INTEGRATION.md#n8n-setup)
-- [ ] **You:** fill in `.env.local` (`N8N_WEBHOOK_BASE`, `N8N_WEBHOOK_SECRET`)
-- [ ] **Verify end to end on real n8n:** valid domain · company name · cached company · unreachable · invalid name
+- [x] n8n setup steps 1–7 and `.env.local`
+- [x] Auth: requests without the key or with a wrong key get 403
+- [x] API through proxy: 202 / 400 / 404, and failed jobs report the step that broke
+- [x] **Real n8n, end to end in the UI:** unreachable domain ✅ · invalid name ✅
+- [ ] Re-import Agent v2 with the Bug 1 fix
+- [ ] Bug 2: company-name lookup returns `not_found` for "Zapier"
+- [ ] **Real n8n:** valid domain · company name · cached company
 - [ ] Measure real run times and adjust the "taking longer than usual" threshold (90 s)
 
 ### Phase 2.1b: rest of the dashboard
@@ -56,11 +60,39 @@ Major changes and decisions, plus what comes next. Newest entries first.
 | 2 | n8n | ✅ Self-hosted on Elestio |
 | 3 | `research_jobs` table | ✅ Approved |
 | 4 | Login | ⏸ After end-to-end testing |
-| 5 | Can I get a test webhook secret in `.env.local` to run the end-to-end tests? | Open |
+| 5 | Test webhook secret in `.env.local` | ✅ Done |
+| 6 | What does "Search for Official Website" output for "Zapier"? (n8n execution log) | Open |
 
 ---
 
 ## Log
+
+### 2026-11-10 · First tests against real n8n
+
+| Case | Result | Time |
+| --- | --- | --- |
+| No key or wrong key | 403 ✅ | — |
+| Invalid input / unknown job | 400 / 404 ✅ | — |
+| `psycray-no-such-domain-8841.com` | `unreachable` ✅ (API + UI) | 4 s |
+| `Qwxzv Plorptex Holdings` | `not_found` ✅ (API + UI) | 4 s |
+| `basecamp.com` | `failed`: save step rejected `icp_breakdown` ❌ Bug 1 | 24 s |
+| `Zapier` | `not_found` ❌ Bug 2 | 5 s |
+
+- Fixed a setup issue: `N8N_WEBHOOK_BASE` ended in `/research`, which the
+  proxy also adds. The first auth failure was a credential mismatch, fixed in n8n.
+- **Bug 1, fixed:** the Postgres node rejects a bare array for a JSON
+  column. `icp_breakdown` is now stored as `{ criteria: [...] }`, and the
+  frontend reads that shape.
+- **Bug 2, open:** the ranking code resolves "Zapier" → `zapier.com` when
+  given normal Exa results (checked offline), so the live Exa node must be
+  returning no results or a different shape. Needs the execution log.
+- **Fixed while investigating:** the domain filter used `endsWith('x.com')`,
+  which threw out legitimate sites like `dropbox.com` and `fedex.com`. It now
+  only matches the exact domain or its subdomains.
+- The error workflow works: the basecamp failure came back as `failed` with
+  the name of the step that broke.
+- The basecamp run got through every research step in about 24 s, faster
+  than the 30–90 s estimate.
 
 ### 2026-11-09 · Phase 2.1a: live research flow
 
