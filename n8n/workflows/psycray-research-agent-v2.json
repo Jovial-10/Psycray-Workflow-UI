@@ -279,7 +279,7 @@
     },
     {
       "parameters": {
-        "jsCode": "const items = $input.all();\nconst query = $('Normalize Input').first().json.company_name?.toLowerCase().trim() || '';\n\n// High-profile non-company domains to reject\nconst ignoredDomains = [\n  'linkedin.com', 'twitter.com', 'x.com', 'facebook.com', 'instagram.com',\n  'crunchbase.com', 'bloomberg.com', 'wikipedia.org', 'pitchbook.com',\n  'glassdoor.com', 'indeed.com', 'youtube.com', 'zoominfo.com'\n];\n\nfunction extractDomain(inputUrl) {\n  if (!inputUrl) return '';\n  try {\n    const parsed = new URL(inputUrl.startsWith('http') ? inputUrl : 'https://' + inputUrl);\n    return parsed.hostname.replace(/^www\\./, '');\n  } catch (e) {\n    return inputUrl.replace(/^https?:\\/\\//, '').replace(/^www\\./, '').split('/')[0].trim();\n  }\n}\n\nconst candidates = [];\n\nfor (const item of items) {\n  const url = item.json.url || '';\n  const title = (item.json.title || '').toLowerCase();\n  let hostname = '';\n\n  try {\n    hostname = new URL(url).hostname.replace(/^www\\./, '');\n  } catch (e) {\n    continue;\n  }\n\n  // Filter out social, directory, and media platforms\n  if (ignoredDomains.some(d => hostname === d || hostname.endsWith('.' + d))) continue;\n\n  let score = 0;\n  const cleanName = query.replace(/[^a-z0-9]/g, '');\n  const cleanHost = hostname.split('.')[0].replace(/[^a-z0-9]/g, '');\n\n  if (cleanHost === cleanName) score += 50;\n  else if (cleanHost.includes(cleanName) || cleanName.includes(cleanHost)) score += 30;\n  if (title.includes(query)) score += 25;\n\n  candidates.push({\n    domain: hostname,\n    url: url,\n    title: item.json.title,\n    score: score\n  });\n}\n\ncandidates.sort((a, b) => b.score - a.score);\n\n// Fallback to the top candidate directly without a hard cutoff\nif (candidates.length > 0 && (candidates[0].domain || candidates[0].url)) {\n  const topMatch = candidates[0];\n  const domain = extractDomain(topMatch.domain || topMatch.url);\n  return [{\n    json: {\n      status: 'resolved',\n      candidate_domain: domain,\n      candidate_url: topMatch.url?.startsWith('http') ? topMatch.url : `https://${domain}`,\n      confidence: topMatch.score || 0\n    }\n  }];\n}\n\n// No usable website among the search results\nreturn [{\n  json: {\n    status: 'not_found',\n    candidate_domain: '',\n    candidate_url: '',\n    confidence: 0\n  }\n}];"
+        "jsCode": "const items = $input.all();\nconst query = $('Normalize Input').first().json.company_name?.toLowerCase().trim() || '';\n\n// High-profile non-company domains to reject\nconst ignoredDomains = [\n  'linkedin.com', 'twitter.com', 'x.com', 'facebook.com', 'instagram.com',\n  'crunchbase.com', 'bloomberg.com', 'wikipedia.org', 'pitchbook.com',\n  'glassdoor.com', 'indeed.com', 'youtube.com', 'zoominfo.com'\n];\n\n// Hostname without \"www.\" (regex, so it does not depend on the URL global)\nfunction extractDomain(inputUrl) {\n  const match = String(inputUrl || '').trim().match(/^(?:https?:\\/\\/)?([^\\/?#:\\s]+)/i);\n  return match ? match[1].toLowerCase().replace(/^www\\./, '') : '';\n}\n\nconst candidates = [];\n\nfor (const item of items) {\n  const url = item.json.url || '';\n  const title = (item.json.title || '').toLowerCase();\n  const hostname = /^https?:\\/\\//i.test(url) ? extractDomain(url) : '';\n  if (!hostname) continue;\n\n  // Filter out social, directory, and media platforms\n  if (ignoredDomains.some(d => hostname === d || hostname.endsWith('.' + d))) continue;\n\n  let score = 0;\n  const cleanName = query.replace(/[^a-z0-9]/g, '');\n  const cleanHost = hostname.split('.')[0].replace(/[^a-z0-9]/g, '');\n\n  if (cleanHost === cleanName) score += 50;\n  else if (cleanHost.includes(cleanName) || cleanName.includes(cleanHost)) score += 30;\n  if (title.includes(query)) score += 25;\n\n  candidates.push({\n    domain: hostname,\n    url: url,\n    title: item.json.title,\n    score: score\n  });\n}\n\ncandidates.sort((a, b) => b.score - a.score);\n\n// Fallback to the top candidate directly without a hard cutoff\nif (candidates.length > 0 && (candidates[0].domain || candidates[0].url)) {\n  const topMatch = candidates[0];\n  const domain = extractDomain(topMatch.domain || topMatch.url);\n  return [{\n    json: {\n      status: 'resolved',\n      candidate_domain: domain,\n      candidate_url: topMatch.url?.startsWith('http') ? topMatch.url : `https://${domain}`,\n      confidence: topMatch.score || 0\n    }\n  }];\n}\n\n// No usable website among the search results\nreturn [{\n  json: {\n    status: 'not_found',\n    candidate_domain: '',\n    candidate_url: '',\n    confidence: 0\n  }\n}];"
       },
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
@@ -671,8 +671,8 @@
         0
       ],
       "name": "Research Request",
-      "webhookId": "bb98406f-6c13-4e68-a6a0-828f96838bd5",
-      "id": "a389f7a7-289f-4a34-9188-6b660452d028"
+      "webhookId": "23487daa-a8c6-4ad4-8a83-a8a0935c5170",
+      "id": "d24ef883-43b6-4d35-a737-d8146dc5a3e4"
     },
     {
       "parameters": {
@@ -685,7 +685,7 @@
         0
       ],
       "name": "Validate Request",
-      "id": "6fcfcb9e-c5cd-4190-a8d5-6d97ac5505a2"
+      "id": "2cdfbe34-6f1f-4b19-8ea0-5fb7c6b23ffb"
     },
     {
       "parameters": {
@@ -698,7 +698,7 @@
           },
           "conditions": [
             {
-              "id": "f5034898-d817-47b2-9cdf-c3c3b8487560",
+              "id": "68f279a5-12a7-43ba-b9fe-8c6389acfdaf",
               "leftValue": "={{ $json.valid }}",
               "operator": {
                 "type": "boolean",
@@ -720,7 +720,7 @@
         0
       ],
       "name": "Is Request Valid?",
-      "id": "67ce7f42-9036-4a45-9658-093473669177"
+      "id": "cc300fe3-8488-43fa-a692-50fabfb6f24c"
     },
     {
       "parameters": {
@@ -737,7 +737,7 @@
         160
       ],
       "name": "Respond 400 Invalid",
-      "id": "f35a3fa3-f9fc-4d25-afe4-a01380dcd84c"
+      "id": "8be5895c-dfac-454f-b4d9-126717199774"
     },
     {
       "parameters": {
@@ -760,7 +760,7 @@
           "name": "Postgres account 6"
         }
       },
-      "id": "beb62ceb-4567-4ae7-a4d7-86b4266042d9"
+      "id": "2e75d694-75fd-435e-94ce-017aee014aa5"
     },
     {
       "parameters": {
@@ -777,7 +777,7 @@
         -16
       ],
       "name": "Respond 202 Accepted",
-      "id": "896a0a82-0bca-4e31-8ecd-ed64a6baa87b"
+      "id": "acfa5902-fbe8-4413-954f-a3eff38644f6"
     },
     {
       "parameters": {
@@ -790,7 +790,7 @@
           },
           "conditions": [
             {
-              "id": "485a20eb-3346-4652-a273-5cfc7619ec11",
+              "id": "5db2d43e-ef54-4159-b6dd-5585fc062119",
               "leftValue": "={{ $json.duplicate }}",
               "operator": {
                 "type": "boolean",
@@ -812,7 +812,7 @@
         -16
       ],
       "name": "Is New Job?",
-      "id": "93901317-38bf-4b3b-bbcd-32c99851a34f"
+      "id": "a506721b-1d78-4f21-9f34-c5e51d1b2c22"
     },
     {
       "parameters": {
@@ -825,7 +825,7 @@
           },
           "conditions": [
             {
-              "id": "2a7d313f-fa1f-42e9-92b9-bff39253082d",
+              "id": "559fec85-a24d-43de-b96a-937337de4750",
               "leftValue": "={{ $json.status }}",
               "operator": {
                 "type": "string",
@@ -846,7 +846,7 @@
         16
       ],
       "name": "Was Website Found?",
-      "id": "aaf50c35-78ea-4b69-9dab-67a55c95c0af"
+      "id": "19d4ce61-5c72-451e-be21-e0544fd97a07"
     },
     {
       "parameters": {
@@ -869,7 +869,7 @@
           "name": "Postgres account 6"
         }
       },
-      "id": "6bbaa0ce-aab9-43b6-8b99-30d944ace58c"
+      "id": "9782b49a-cd3f-4386-8256-185ed39649b6"
     },
     {
       "parameters": {
@@ -892,7 +892,7 @@
           "name": "Postgres account 6"
         }
       },
-      "id": "5524a115-51ea-4c42-8b4f-b690e5361078"
+      "id": "bbccdbe9-519c-4df8-b98d-ea3f141809ed"
     },
     {
       "parameters": {
@@ -905,7 +905,7 @@
           },
           "conditions": [
             {
-              "id": "42389603-5d62-4ba5-b11c-bd4493a523c9",
+              "id": "8c36a02e-8258-419d-a559-0f9c54626bbe",
               "leftValue": "={{ Number($json.statusCode || 200) < 400 }}",
               "operator": {
                 "type": "boolean",
@@ -927,7 +927,7 @@
         -144
       ],
       "name": "Is Website OK?",
-      "id": "706ee90e-ca1d-4e7b-90f3-3827a0ede6ab"
+      "id": "11478e45-efff-4e5e-9181-36d905a5116b"
     },
     {
       "parameters": {
@@ -950,7 +950,7 @@
           "name": "Postgres account 6"
         }
       },
-      "id": "205a24e3-3090-4393-a0c8-6679c443a826"
+      "id": "f9bd7409-8276-4aa5-9959-9eeac7c74f2f"
     },
     {
       "parameters": {
@@ -973,7 +973,7 @@
           "name": "Postgres account 6"
         }
       },
-      "id": "32301c22-d78a-4b21-826f-865d47ff8b1b"
+      "id": "e911daa3-80ba-4622-89ce-51a8b67de43e"
     }
   ],
   "pinData": {},

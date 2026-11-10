@@ -12,8 +12,8 @@ Major changes and decisions, plus what comes next. Newest entries first.
 | | |
 | --- | --- |
 | **Phase** | 2.1: frontend and research dashboard |
-| **State** | UI connected to real n8n. Unreachable and not-found cases pass end to end. **Fresh research blocked by 2 bugs** |
-| **Blocked on** | Re-importing Agent v2 (Bug 1 fix) and finding out what Exa returns for a name search (Bug 2) |
+| **State** | ✅ **Phase 2.1a done.** All 5 cases pass end to end on real n8n |
+| **Next** | Research history (Phase 2.1b). Decide on the scoring quick fix |
 | **Data source** | Live n8n via `/api` (`VITE_API_MODE=mock` for mock data) |
 
 ---
@@ -32,9 +32,11 @@ Major changes and decisions, plus what comes next. Newest entries first.
 - [x] Auth: requests without the key or with a wrong key get 403
 - [x] API through proxy: 202 / 400 / 404, and failed jobs report the step that broke
 - [x] **Real n8n, end to end in the UI:** unreachable domain ✅ · invalid name ✅
-- [ ] Re-import Agent v2 with the Bug 1 fix
-- [ ] Bug 2: company-name lookup returns `not_found` for "Zapier"
-- [ ] **Real n8n:** valid domain · company name · cached company
+- [x] Re-imported Agent v2 → Bug 1 fixed: **valid domain ✅ · cached ✅**
+- [x] Bug 2 diagnosed and fixed in the file (no `URL` global in n8n's Code sandbox)
+- [x] Re-imported Agent v2 → **company name ✅** ("Zapier" → zapier.com, fresh with `refresh: true`)
+- [ ] Scoring misses obvious fits (Basecamp scored 20). Fix in Phase 2.2 or as a quick patch, your call
+- [ ] Growth signals pick up other companies with the same name (e.g. Basecamp Research)
 - [ ] Measure real run times and adjust the "taking longer than usual" threshold (90 s)
 
 ### Phase 2.1b: rest of the dashboard
@@ -61,11 +63,52 @@ Major changes and decisions, plus what comes next. Newest entries first.
 | 3 | `research_jobs` table | ✅ Approved |
 | 4 | Login | ⏸ After end-to-end testing |
 | 5 | Test webhook secret in `.env.local` | ✅ Done |
-| 6 | What does "Search for Official Website" output for "Zapier"? (n8n execution log) | Open |
+| 6 | Exa output for "Zapier" | ✅ One item per result (`id`, `url`, `title`, `author`) |
+| 7 | A working `N8N_API_KEY` (current value is rejected with 401) | Open, optional |
 
 ---
 
 ## Log
+
+### 2026-11-10 · All end-to-end cases pass
+
+| Case | Input | Result | Time |
+| --- | --- | --- | --- |
+| Valid domain | `basecamp.com` | ✅ `completed` | ~25 s |
+| Company name | `Zapier` (refresh) | ✅ `completed` → zapier.com, 100 High Fit | 23 s |
+| Cached company | `basecamp.com` | ✅ `cached` | 4 s |
+| Unreachable | `psycray-no-such-domain-8841.com` | ✅ `unreachable` | 4 s |
+| Unidentifiable | `Qwxzv Plorptex Holdings` | ✅ `not_found` | 4 s |
+
+- Refresh (`refresh: true`) skips the cache as intended.
+- Fresh runs take 23–25 s, well under the 90 s "taking longer than
+  usual" threshold.
+- Rows saved by older workflow versions have no `icp_breakdown`. The UI
+  shows a "refresh to generate" message for those.
+
+### 2026-11-10 · Fresh and cached research work on real n8n
+
+| Case | Result | Time |
+| --- | --- | --- |
+| `basecamp.com` (fresh) | `completed` ✅: facts, ICP breakdown, 6 sources, 1.8k-character brief | ~25 s |
+| `basecamp.com` (again) | `cached` ✅ | 4 s |
+| `Zapier` | `not_found` ❌ → fixed in file, waiting for re-import | 4 s |
+
+- **Bug 2, cause:** *Rank Website Candidates* called `new URL()`. n8n's Code
+  sandbox doesn't provide `URL`, so every result threw, the `catch` skipped
+  it, and no candidates were left. The original workflow's `items[0].url`
+  fallback hid this. Hostnames are now parsed with a regex, and the fix is
+  tested with `URL` undefined.
+- **UI, checked with real data:** profile, scorecard reasons, all 8 brief
+  sections and sources render, with no console errors. Brief links
+  `[text](url)` now render as real links.
+- **Scoring quality (not a bug in the new code):** Basecamp scored 20, Low
+  Fit. The keyword rules only read the synthesis summary and confirmed facts
+  ("project management system"). They never read
+  `company_facts.target_industries` ("software development").
+- **Entity confusion:** Exa's growth-signal search for "Basecamp" also
+  returned Basecamp Research (biotech) and Basecamp Fitness. The synthesis
+  ignored them, but they still appear under Sources.
 
 ### 2026-11-10 · First tests against real n8n
 

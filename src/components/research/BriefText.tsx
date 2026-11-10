@@ -56,15 +56,24 @@ export function BriefText({ text }: { text: string }) {
   return <div className="space-y-2 text-sm leading-relaxed text-muted-foreground">{blocks}</div>
 }
 
-/** **bold** → <strong>; everything else as plain text. */
+/** **bold** → <strong>, [text](https://…) → link; everything else as plain text. */
 function inline(text: string): ReactNode[] {
-  return text.split(/(\*\*[^*]+\*\*)/g).map((part, i) =>
-    part.startsWith("**") && part.endsWith("**") ? (
-      <strong key={i} className="font-medium text-foreground">
-        {part.slice(2, -2)}
-      </strong>
-    ) : (
-      part
-    ),
-  )
+  return text.split(/(\*\*[^*]+\*\*|\[[^\]]+\]\(https?:\/\/[^)\s]+\))/g).map((part, i) => {
+    if (part.startsWith("**") && part.endsWith("**")) {
+      return (
+        <strong key={i} className="font-medium text-foreground">
+          {part.slice(2, -2)}
+        </strong>
+      )
+    }
+    const link = part.match(/^\[([^\]]+)\]\((https?:\/\/[^)\s]+)\)$/)
+    if (link) {
+      return (
+        <a key={i} href={link[2]} target="_blank" rel="noreferrer" className="underline underline-offset-2 hover:text-foreground">
+          {link[1]}
+        </a>
+      )
+    }
+    return part
+  })
 }
