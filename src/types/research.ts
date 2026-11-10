@@ -14,6 +14,8 @@
 export interface ResearchRequest {
   /** A company name ("Acme Corp") or a domain/URL ("acme.com"). */
   input: string
+  /** Skip the 30-day cache and research again. */
+  refresh?: boolean
 }
 
 /** Output of the "Normalize Input" code node. */
@@ -109,6 +111,19 @@ export interface SynthesizedResearch {
  */
 export type IcpTier = "High Fit" | "Moderate Fit" | "Low Fit" | "Needs Review"
 
+/**
+ * One row of the ICP scorecard ("ICP Scoring Logic" → `icp_breakdown`).
+ * `unknown` means there was not enough evidence to judge the criterion,
+ * which is different from the company failing it (`not_met`).
+ */
+export interface IcpCriterionScore {
+  criterion: string
+  score: number
+  max: number
+  status: "met" | "not_met" | "unknown"
+  reason: string
+}
+
 export interface IcpScore {
   /** 0–100, or null when scoring could not run. */
   score: number | null
@@ -167,41 +182,47 @@ export interface CompanyResearchRecord {
   sources: { urls: string[] } | null
   icp_score: number | null
   icp_tier: IcpTier | null
+  /** Added in Phase 2. Null for rows researched before the migration. */
+  icp_breakdown: IcpCriterionScore[] | null
   account_brief: string | null
 }
 
 /* ------------------------------------------------------------------ */
-/* Workflow responses                                                  */
+/* Research jobs — `research_jobs` table                               */
 /* ------------------------------------------------------------------ */
 
-/** "Return Cached Research" — a validated record < 30 days old existed. */
-export interface CachedResearchResponse {
-  status: "cached"
-  domain: string
-  cached_at: string
-  company_facts: CompanyResearchRecord["company_facts"]
-  research_signals: ResearchSignals | null
-  synthesized_research: SynthesizedResearch | null
-  sources: { urls: string[] } | null
-  icp_score: number | null
-  icp_tier: IcpTier | null
-  account_brief: string | null
+/**
+ * - running      the workflow is still working
+ * - completed    fresh research was saved
+ * - cached       research < 30 days old was reused
+ * - unreachable  the company website failed to load or returned an error
+ * - not_found    no official website could be identified from the name
+ * - failed       a workflow step errored, or the job ran over 10 minutes
+ */
+export type ResearchJobStatus =
+  | "running"
+  | "completed"
+  | "cached"
+  | "unreachable"
+  | "not_found"
+  | "failed"
+
+/** Reply to `POST /api/research`. */
+export interface StartResearchResponse {
+  job_id: string
+  /** True when an identical request was already running; its job is reused. */
+  duplicate: boolean
 }
 
-/** "Return Unreachable Response" — the company website failed to load. */
-export interface UnreachableResearchResponse {
-  status: "error"
-  message: string
-  domain: string
+/** Reply to `GET /api/research/status?id=…`. */
+export interface ResearchJob {
+  job_id: string
+  status: ResearchJobStatus
+  input: string
+  domain: string | null
+  error: string | null
+  created_at: string
+  updated_at: string
+  /** Present once status is `completed` or `cached`. */
+  record: CompanyResearchRecord | null
 }
-
-/** Fresh research completed and was upserted to `company_research`. */
-export interface CompletedResearchResponse {
-  status: "completed"
-  record: CompanyResearchRecord
-}
-
-export type ResearchRunResult =
-  | CachedResearchResponse
-  | UnreachableResearchResponse
-  | CompletedResearchResponse

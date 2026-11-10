@@ -1,13 +1,16 @@
+import { httpResearchApi } from "./httpClient"
 import { mockResearchApi } from "./mockClient"
 import type { ResearchApi } from "./types"
 
 /**
  * The single API instance the app uses.
  *
- * Phase 1 ships only the mock client. When the n8n/Postgres backend is
- * connected, add e.g. `httpClient.ts` implementing `ResearchApi` and select
- * it here (optionally via an env var such as `VITE_API_MODE`).
+ * `VITE_API_MODE=mock` uses local mock data (no n8n needed).
+ * Anything else, including unset, talks to the live n8n workflow via `/api`.
  */
-export const api: ResearchApi = mockResearchApi
+export const apiMode = import.meta.env.VITE_API_MODE === "mock" ? "mock" : "live"
 
+export const api: ResearchApi = apiMode === "mock" ? mockResearchApi : httpResearchApi
+
+export { ApiError } from "./types"
 export type { ResearchApi }

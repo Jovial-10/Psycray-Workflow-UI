@@ -77,6 +77,12 @@ export const mockCompanies: CompanyResearchRecord[] = [
     },
     icp_score: 95,
     icp_tier: "High Fit",
+    icp_breakdown: [
+      { criterion: "Baseline", score: 20, max: 20, status: "met", reason: "Starting score for every researched company" },
+      { criterion: "Industry Fit", score: 30, max: 35, status: "met", reason: "Target vertical: Manufacturing/Industrial/Logistics" },
+      { criterion: "Digital Opportunity", score: 25, max: 25, status: "met", reason: "Workflow, automation, portal or integration need found" },
+      { criterion: "Growth Signals", score: 20, max: 20, status: "met", reason: "Growth, hiring, funding or partnership signals found" },
+    ],
     account_brief: `Account Brief: Brightline Fabrication
 
 Company Summary
@@ -139,6 +145,12 @@ Potential Psycray Service Opportunities
     },
     icp_score: 75,
     icp_tier: "Moderate Fit",
+    icp_breakdown: [
+      { criterion: "Baseline", score: 20, max: 20, status: "met", reason: "Starting score for every researched company" },
+      { criterion: "Industry Fit", score: 35, max: 35, status: "met", reason: "Core vertical: SaaS/Technology" },
+      { criterion: "Digital Opportunity", score: 0, max: 25, status: "not_met", reason: "No workflow or integration need found" },
+      { criterion: "Growth Signals", score: 20, max: 20, status: "met", reason: "Growth, hiring, funding or partnership signals found" },
+    ],
     account_brief: `Account Brief: LedgerLoop
 
 Company Summary
@@ -155,6 +167,7 @@ SaaS platform automating accounts payable for credit unions. A new core-banking 
     sources: null,
     icp_score: null,
     icp_tier: null,
+    icp_breakdown: null,
     account_brief: null,
   },
 ]

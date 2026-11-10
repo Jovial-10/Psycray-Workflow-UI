@@ -1,0 +1,209 @@
+{
+  "name": "Psycray Research API",
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "GET",
+        "path": "psycray/research/status",
+        "authentication": "headerAuth",
+        "responseMode": "responseNode",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "position": [
+        0,
+        0
+      ],
+      "name": "Research Status Request",
+      "webhookId": "942fc121-1198-431a-b486-ba3ca04f8a37",
+      "id": "19f9962d-2244-4498-a019-3d6b011212a9"
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "-- Job status, joined with the stored research once the job has finished.\n-- Jobs stuck in 'running' for over 10 minutes are reported as failed.\nSELECT\n  j.id::text AS job_id,\n  CASE\n    WHEN j.status = 'running' AND j.created_at < NOW() - INTERVAL '10 minutes' THEN 'failed'\n    ELSE j.status\n  END AS status,\n  CASE\n    WHEN j.status = 'running' AND j.created_at < NOW() - INTERVAL '10 minutes' THEN 'Research took too long and was stopped.'\n    ELSE j.error\n  END AS error,\n  j.input,\n  j.domain,\n  j.created_at,\n  j.updated_at,\n  CASE WHEN j.status IN ('completed', 'cached') THEN to_jsonb(cr) END AS record\nFROM research_jobs j\nLEFT JOIN company_research cr ON cr.domain = j.domain\nWHERE j.id::text = $1;",
+        "options": {
+          "queryReplacement": "={{ [ $json.query.id || '' ] }}"
+        }
+      },
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.7,
+      "position": [
+        224,
+        0
+      ],
+      "name": "Load Research Job",
+      "credentials": {
+        "postgres": {
+          "id": "V1HMewWXgQBIMFpN",
+          "name": "Postgres account 6"
+        }
+      },
+      "alwaysOutputData": true,
+      "id": "22db6f99-77fc-45fd-9a65-58c7941ad4ed"
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "loose",
+            "version": 3
+          },
+          "conditions": [
+            {
+              "id": "9a051f1c-7c9c-42e5-b114-8c3b79bded0c",
+              "leftValue": "={{ $json.job_id }}",
+              "operator": {
+                "type": "string",
+                "operation": "exists",
+                "singleValue": true
+              },
+              "rightValue": ""
+            }
+          ],
+          "combinator": "and"
+        },
+        "looseTypeValidation": true,
+        "options": {}
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.3,
+      "position": [
+        448,
+        0
+      ],
+      "name": "Was Job Found?",
+      "id": "8896e008-e919-439d-8fe4-ccd845d4a8a1"
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={{ $json }}",
+        "options": {
+          "responseCode": 200
+        }
+      },
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.1,
+      "position": [
+        672,
+        -96
+      ],
+      "name": "Respond 200 Job",
+      "id": "750ef33d-a35f-48e6-b954-2b383bb9119f"
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={{ { error: 'Research job not found.' } }}",
+        "options": {
+          "responseCode": 404
+        }
+      },
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.1,
+      "position": [
+        672,
+        96
+      ],
+      "name": "Respond 404 Not Found",
+      "id": "ebc3dfe3-2db5-46d9-92a0-35adc2820f9f"
+    },
+    {
+      "parameters": {},
+      "type": "n8n-nodes-base.errorTrigger",
+      "typeVersion": 1,
+      "position": [
+        0,
+        352
+      ],
+      "name": "Research Agent Failed",
+      "id": "86d62da9-878d-494d-baf4-7e35159e5b10"
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "UPDATE research_jobs\nSET status = 'failed',\n    error = $2,\n    updated_at = NOW()\nWHERE execution_id = $1\n  AND status = 'running';",
+        "options": {
+          "queryReplacement": "={{ [ String($json.execution?.id || ''), 'Research step failed: ' + ($json.execution?.lastNodeExecuted || 'unknown step') + '. ' + ($json.execution?.error?.message || '') ] }}"
+        }
+      },
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.7,
+      "position": [
+        224,
+        352
+      ],
+      "name": "Mark Job Failed",
+      "credentials": {
+        "postgres": {
+          "id": "V1HMewWXgQBIMFpN",
+          "name": "Postgres account 6"
+        }
+      },
+      "id": "594e7b9f-77d2-4239-a518-d98972bce36d"
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "Research Status Request": {
+      "main": [
+        [
+          {
+            "node": "Load Research Job",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Load Research Job": {
+      "main": [
+        [
+          {
+            "node": "Was Job Found?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Was Job Found?": {
+      "main": [
+        [
+          {
+            "node": "Respond 200 Job",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Respond 404 Not Found",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Research Agent Failed": {
+      "main": [
+        [
+          {
+            "node": "Mark Job Failed",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "tags": []
+}

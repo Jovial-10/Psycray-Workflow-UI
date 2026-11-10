@@ -1,25 +1,25 @@
-import type {
-  AccountBrief,
-  CompanyResearchRecord,
-  ResearchRequest,
-  ResearchRunResult,
-} from "@/types/research"
+import type { ResearchJob, ResearchRequest, StartResearchResponse } from "@/types/research"
 
 /**
  * The contract every backend implementation must satisfy.
  * Pages and hooks depend on this interface — never on a concrete client —
- * so swapping mock data for n8n/Postgres is a one-line change in `index.ts`.
+ * so swapping mock data for n8n is a one-line change in `index.ts`.
  */
 export interface ResearchApi {
-  /** All researched companies, newest first. */
-  listCompanies(): Promise<CompanyResearchRecord[]>
+  /** Start the n8n research workflow for a company name or domain. */
+  startResearch(request: ResearchRequest): Promise<StartResearchResponse>
 
-  /** A single company by its unique domain, or null if never researched. */
-  getCompany(domain: string): Promise<CompanyResearchRecord | null>
+  /** Current state of a research job, including the result once finished. */
+  getResearchJob(jobId: string): Promise<ResearchJob>
+}
 
-  /** Trigger the n8n research workflow for a company name or domain. */
-  runResearch(request: ResearchRequest): Promise<ResearchRunResult>
+/** A failed API call, with a message that is safe to show to users. */
+export class ApiError extends Error {
+  readonly status: number
 
-  /** Account briefs derived from validated research records. */
-  listAccountBriefs(): Promise<AccountBrief[]>
+  constructor(message: string, status: number) {
+    super(message)
+    this.name = "ApiError"
+    this.status = status
+  }
 }

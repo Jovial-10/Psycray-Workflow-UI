@@ -8,9 +8,10 @@ facts from the company's website, gathers growth signals with Exa, synthesizes
 evidence with OpenAI, calculates an ICP score, writes an account brief, and
 caches the result in Neon PostgreSQL. This app is the interface to all of that.
 
-> **Status: Phase 1, project setup and architecture.**
-> Every route renders a placeholder. Data comes from local mocks, and no
-> backend is connected yet.
+> **Status: Phase 2.1, live research flow.**
+> **Company Research** starts real n8n research and shows the results. The
+> other routes are still placeholders. See [docs/DEVLOG.md](docs/DEVLOG.md)
+> for progress and next steps.
 
 ---
 
@@ -19,9 +20,18 @@ caches the result in Neon PostgreSQL. This app is the interface to all of that.
 Requires **Node.js 20.19+** (developed on Node 24).
 
 ```bash
-npm install      # install dependencies
-npm run dev      # start the dev server → http://localhost:5173
+npm install
+cp .env.example .env.local   # then fill in the n8n values (see below)
+npm run dev                  # → http://localhost:5173
 ```
+
+| Mode | `.env.local` | Needs n8n? |
+| ---- | ------------ | ---------- |
+| **Live** | `N8N_WEBHOOK_BASE` + `N8N_WEBHOOK_SECRET` | Yes. See [docs/INTEGRATION.md](docs/INTEGRATION.md#n8n-setup) |
+| **Mock** | `VITE_API_MODE=mock` | No. Uses fictional data from `src/mocks/` |
+
+In mock mode, try `brightline-fabrication.example` or `LedgerLoop` (cached
+result), `unreachable.example` (unreachable) or any other name (not found).
 
 | Command           | What it does                                     |
 | ----------------- | ------------------------------------------------ |
@@ -42,9 +52,14 @@ npm run dev      # start the dev server → http://localhost:5173
 | Components | shadcn/ui (Radix primitives, copied into repo) |
 | Routing    | React Router (data router)                   |
 | Icons      | Lucide React                                 |
+| Validation | zod (API responses)                          |
 
 There is no state library, data-fetching library or form library yet. We will
 add them only when a feature needs one.
+
+> **shadcn note:** `npx shadcn add <component>` currently writes
+> `import { cn } from "cn"` and installs a third-party `cn` package. Change the
+> import to `@/lib/utils` and run `npm uninstall cn`.
 
 ---
 
@@ -56,9 +71,12 @@ src/
 │   └── router.tsx            # Route table (createBrowserRouter)
 ├── components/
 │   ├── layout/               # App shell: Sidebar, MobileNav, PageHeader, …
+│   ├── research/             # Research form, status, result views
 │   └── ui/                   # shadcn/ui components (generated, editable)
 ├── config/
 │   └── navigation.ts         # Sidebar links: one source of truth
+├── hooks/
+│   └── useResearchJob.ts     # Start a job, poll until it finishes
 ├── lib/
 │   └── utils.ts              # cn() class-name helper
 ├── mocks/
@@ -67,12 +85,25 @@ src/
 ├── services/
 │   └── api/
 │       ├── types.ts          # ResearchApi interface (the contract)
-│       ├── mockClient.ts     # Mock implementation backed by src/mocks
-│       └── index.ts          # Exports the active `api` instance
+│       ├── httpClient.ts     # Live client → /api → n8n
+│       ├── mockClient.ts     # Mock client backed by src/mocks
+│       ├── schemas.ts        # zod validation of n8n responses
+│       └── index.ts          # Picks the client from VITE_API_MODE
 ├── types/
 │   └── research.ts           # Domain types mirroring the n8n workflow
 ├── index.css                 # Tailwind entry + shadcn theme tokens
 └── main.tsx                  # App entry point
+```
+
+Outside `src/`:
+
+```text
+n8n/
+├── workflows/                # Importable n8n workflows (v2 agent + API)
+└── sql/                      # Neon migrations
+docs/
+├── DEVLOG.md                 # Changes, decisions, next steps
+└── INTEGRATION.md            # API contract, n8n setup, deployment
 ```
 
 Imports use the `@/` alias for `src/`, e.g. `import { api } from "@/services/api"`.
@@ -84,7 +115,7 @@ Imports use the `@/` alias for `src/`, e.g. `import { api } from "@/services/api
 | Path         | Page             | Purpose (future phases)                             |
 | ------------ | ---------------- | --------------------------------------------------- |
 | `/`          | Overview         | Pipeline health across researched accounts          |
-| `/research`  | Company Research | Run the research agent on a name or domain          |
+| `/research`  | Company Research | **Live:** research a name or domain, view results   |
 | `/companies` | Saved Companies  | Browse every company in the research cache          |
 | `/briefs`    | Account Briefs   | Read sales-ready briefs for validated accounts      |
 | `/settings`  | Settings         | Backend connection and scoring reference            |
@@ -100,13 +131,15 @@ Imports use the `@/` alias for `src/`, e.g. `import { api } from "@/services/api
 ### Data flow
 
 ```text
-pages ──► services/api (ResearchApi) ──► mockClient ──► mocks/companies.ts
-                                    └──► httpClient  ──► n8n / Postgres   (future)
+pages ──► hooks ──► services/api (ResearchApi) ─┬─► httpClient ──► /api ──► proxy ──► n8n ──► Neon
+                                                └─► mockClient ──► mocks/companies.ts
 ```
 
-Pages depend only on the `ResearchApi` interface. To connect the real backend,
-write a client that implements the interface and select it in
-`src/services/api/index.ts`. No page code needs to change.
+Pages depend only on the `ResearchApi` interface. Research runs as an
+**asynchronous job**: `POST /api/research` returns a `job_id`, and the app
+checks `/api/research/status` until the job finishes. The proxy (Vite in dev,
+nginx in production) adds the n8n secret, so it never reaches the browser.
+Full details are in [docs/INTEGRATION.md](docs/INTEGRATION.md).
 
 ### Domain types
 
@@ -120,10 +153,10 @@ mapping layer.
 | `CompanyFacts`           | Extract Core Company Facts (gpt-4o-mini)           |
 | `ExaSignal`, `ResearchSignals` | Find Growth Signals (Exa)                    |
 | `SynthesizedResearch`    | Synthesize Intelligence & Evidence (gpt-4o)        |
-| `IcpScore`, `IcpTier`    | ICP Scoring Logic                                  |
+| `IcpCriterionScore`, `IcpTier` | ICP Scoring Logic (`icp_breakdown`)          |
 | `AccountBrief`           | Generate Account Brief (gpt-4o)                    |
 | `CompanyResearchRecord`  | `company_research` table (Neon Postgres)           |
-| `ResearchRunResult`      | Cached, unreachable and completed responses        |
+| `ResearchJob`, `ResearchJobStatus` | `research_jobs` table / status endpoint  |
 
 ### ICP scoring (reference)
 
@@ -137,7 +170,9 @@ The workflow starts each company at **20** and adds points, capped at 100:
 | Growth: hiring, funding, partnership, expansion  | +20    |
 
 **High Fit** ≥ 80 · **Moderate Fit** ≥ 55 · **Low Fit** < 55 ·
-**Needs Review** when the synthesis is not valid JSON.
+**Needs Review** when the synthesis is not valid JSON. Each criterion is
+returned with its score, maximum and status (`met`, `not_met` or `unknown`),
+so the UI can explain the score.
 
 ### Caching
 
@@ -150,14 +185,15 @@ Domains it cannot reach are stored with status `error/unreachable`.
 
 `src/mocks/companies.ts` holds three **fictional** companies on `.example`
 domains. Together they cover a High Fit account, a Moderate Fit account and an
-unreachable domain. The mock client adds ~300 ms of latency so loading states
-show up during development.
+unreachable domain. The mock client simulates a job that runs for 4 s,
+so loading states show up during development.
 
 ---
 
 ## Roadmap
 
 - [x] **Phase 1:** Setup, routing, types, mock API, placeholders
-- [ ] Company Research page wired to the mock API
-- [ ] Saved Companies table and Account Brief viewer
-- [ ] Live backend integration (n8n webhook + Postgres read API)
+- [x] **Phase 2.1a:** Live research flow (jobs, status, results view)
+- [ ] **Phase 2.1b:** Research history, saved briefs, access control, VPS deploy
+- [ ] **Phase 2.2:** Configurable ICP
+- [ ] **Phase 2.3:** Historical sales analysis (optional)
