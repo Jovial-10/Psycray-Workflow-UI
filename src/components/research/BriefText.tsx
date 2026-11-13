@@ -1,4 +1,7 @@
 import type { ReactNode } from "react"
+import { ACCOUNT_BRIEF_SECTIONS } from "@/types/research"
+
+const sectionTitles = new Set<string>(ACCOUNT_BRIEF_SECTIONS.map((s) => s.toLowerCase()))
 
 /**
  * Renders the model-written account brief (loose markdown) as readable text.
@@ -23,6 +26,8 @@ export function BriefText({ text }: { text: string }) {
 
   for (const rawLine of text.split("\n")) {
     const line = rawLine.trim()
+    // The page already shows the company name; skip the brief's own title line
+    if (/^#*\s*\**account brief:/i.test(line)) continue
     if (!line) {
       flushList()
       continue
@@ -35,8 +40,9 @@ export function BriefText({ text }: { text: string }) {
     }
     flushList()
 
-    // "### Heading", "**Heading**", or "1. Company Summary" style section titles
+    // "### Heading", "**Heading**", "1. Company Summary", or a bare standard section title
     const heading =
+      (sectionTitles.has(line.replace(/[:*]/g, "").trim().toLowerCase()) ? line : undefined) ??
       line.match(/^#{1,6}\s+(.*)$/)?.[1] ??
       line.match(/^\*\*([^*]+)\*\*:?$/)?.[1] ??
       line.match(/^\d+\.\s+\**([A-Z][^.]{2,60}?)\**:?$/)?.[1]

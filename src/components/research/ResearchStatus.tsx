@@ -84,7 +84,7 @@ function Running({ startedAt, submitting }: { startedAt: number | null; submitti
           <p className="mt-1 text-muted-foreground">
             {slow
               ? "This is taking longer than usual. Research continues in the background — you can keep this page open."
-              : "Reading the website, gathering signals, scoring fit and writing the brief. Fresh research usually takes 30–90 seconds."}
+              : "Reading the website, gathering signals, scoring fit and writing the brief. Fresh research usually takes under a minute."}
           </p>
         </div>
       </CardContent>
@@ -104,9 +104,9 @@ function Notice({
   onRetry: () => void
 }) {
   return (
-    <Card className="border-destructive/30">
+    <Card className="border-danger-border">
       <CardContent className="flex items-start gap-3">
-        <Icon className="mt-0.5 size-5 shrink-0 text-destructive" />
+        <Icon className="mt-0.5 size-5 shrink-0 text-danger" />
         <div className="flex-1 text-sm">
           <p className="font-medium">{title}</p>
           <p className="mt-1 text-muted-foreground">{children}</p>

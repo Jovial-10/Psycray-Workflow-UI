@@ -11,6 +11,7 @@ import type {
   ResearchJob,
 } from "@/types/research"
 import { BriefText } from "./BriefText"
+import { FitBadge } from "./FitBadge"
 
 interface ResearchResultProps {
   job: ResearchJob
@@ -34,7 +35,7 @@ export function ResearchResult({ job, record, onRefresh, refreshing }: ResearchR
             href={`https://${record.domain}`}
             target="_blank"
             rel="noreferrer"
-            className="inline-flex items-center gap-1 text-sm text-muted-foreground hover:underline"
+            className="inline-flex items-center gap-1 font-mono text-[13px] text-muted-foreground hover:text-foreground hover:underline"
           >
             {record.domain} <ExternalLink className="size-3" />
           </a>
@@ -49,7 +50,7 @@ export function ResearchResult({ job, record, onRefresh, refreshing }: ResearchR
         </Button>
       </div>
 
-      <div className="grid gap-6 lg:grid-cols-[1fr_20rem]">
+      <div className="grid items-start gap-6 lg:grid-cols-[1fr_20rem]">
         <CompanyProfile facts={facts} summary={synthesis?.summary} unknowns={synthesis?.unknowns ?? []} />
         <IcpScorecard score={record.icp_score} tier={record.icp_tier} breakdown={record.icp_breakdown} />
       </div>
@@ -127,13 +128,6 @@ function CompanyProfile({
   )
 }
 
-const tierVariant: Record<IcpTier, "default" | "secondary" | "outline" | "destructive"> = {
-  "High Fit": "default",
-  "Moderate Fit": "secondary",
-  "Low Fit": "outline",
-  "Needs Review": "destructive",
-}
-
 const statusLabel: Record<IcpCriterionScore["status"], string> = {
   met: "Met",
   not_met: "Not met",
@@ -158,11 +152,7 @@ function IcpScorecard({
         <div className="flex items-baseline gap-2">
           <span className="text-4xl font-semibold tabular-nums">{score ?? "—"}</span>
           <span className="text-sm text-muted-foreground">/ 100</span>
-          {tier && (
-            <Badge variant={tierVariant[tier]} className="ml-auto">
-              {tier}
-            </Badge>
-          )}
+          {tier && <FitBadge tier={tier} className="ml-auto self-center" />}
         </div>
 
         {breakdown && breakdown.length > 0 ? (
@@ -177,7 +167,7 @@ function IcpScorecard({
                 </div>
                 <div className="mt-1 h-1.5 overflow-hidden rounded-full bg-muted">
                   <div
-                    className={cn("h-full rounded-full", c.status === "unknown" ? "bg-transparent" : "bg-primary")}
+                    className={cn("h-full rounded-full", c.status === "unknown" ? "bg-transparent" : "bg-foreground/80")}
                     style={{ width: `${c.max ? (c.score / c.max) * 100 : 0}%` }}
                   />
                 </div>
@@ -210,8 +200,13 @@ function Sources({ urls }: { urls: string[] }) {
           <ul className="space-y-1.5 text-sm">
             {urls.map((url) => (
               <li key={url} className="truncate">
-                <a href={url} target="_blank" rel="noreferrer" className="text-muted-foreground hover:underline">
-                  {url}
+                <a
+                  href={url}
+                  target="_blank"
+                  rel="noreferrer"
+                  className="font-mono text-[13px] text-foreground underline decoration-border underline-offset-4 hover:decoration-foreground"
+                >
+                  {url.replace(/^https?:\/\//, "")}
                 </a>
               </li>
             ))}

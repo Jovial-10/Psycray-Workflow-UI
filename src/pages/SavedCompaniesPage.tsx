@@ -1,22 +1,22 @@
-import { Building2 } from "lucide-react"
-import { PageHeader } from "@/components/layout/PageHeader"
-import { PlaceholderPanel } from "@/components/layout/PlaceholderPanel"
+import { Building2, Search } from "lucide-react"
+import { Link } from "react-router"
+import { EmptyState } from "@/components/common/EmptyState"
+import { Button } from "@/components/ui/button"
 
 export function SavedCompaniesPage() {
   return (
-    <>
-      <PageHeader
-        title="Saved Companies"
-        description="Every company stored in the research cache."
-      />
-      <PlaceholderPanel
-        icon={Building2}
-        planned={[
-          "Searchable table of researched domains",
-          "ICP score, tier, status, and last-updated date",
-          "Cache freshness (research older than 30 days is re-run)",
-        ]}
-      />
-    </>
+    <EmptyState
+      icon={Building2}
+      title="Research history isn't connected yet"
+      description="Saved companies will list here with their fit tier, score and last research date. Research is still saved for 30 days, so repeat lookups return instantly."
+      action={
+        <Button variant="outline" asChild>
+          <Link to="/research">
+            <Search />
+            Research a company
+          </Link>
+        </Button>
+      }
+    />
   )
 }
