@@ -1,4 +1,5 @@
 import { mockCompanies } from "@/mocks/companies"
+import { mockResearchJobs } from "@/mocks/researchJobs"
 import type { ResearchJob, ResearchJobStatus } from "@/types/research"
 import { ApiError, type ResearchApi } from "./types"
 
@@ -45,12 +46,32 @@ function finish(input: string, refresh: boolean) {
   return { status: "not_found" as const, domain: null, record: null }
 }
 
+/**
+ * VITE_MOCK_SCENARIO=empty serves no companies, for checking empty states
+ * during development.
+ */
+const emptyScenario = import.meta.env.VITE_MOCK_SCENARIO === "empty"
+
 const ERRORS: Partial<Record<ResearchJobStatus, string>> = {
   unreachable: "Company website could not be reached or returned an error.",
   not_found: "No official website could be identified for this company.",
 }
 
 export const mockResearchApi: ResearchApi = {
+  async listCompanies() {
+    const records = emptyScenario
+      ? []
+      : [...mockCompanies].sort((a, b) => b.updated_at.localeCompare(a.updated_at))
+    return delay({ records, source: "sample" as const })
+  },
+
+  async listResearchJobs() {
+    const jobs = emptyScenario
+      ? []
+      : [...mockResearchJobs].sort((a, b) => b.created_at.localeCompare(a.created_at))
+    return delay({ jobs, source: "sample" as const })
+  },
+
   async startResearch({ input, refresh = false }) {
     const job_id = crypto.randomUUID()
     jobs.set(job_id, { input, refresh, startedAt: Date.now() })

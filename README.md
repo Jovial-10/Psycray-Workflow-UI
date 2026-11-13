@@ -8,7 +8,7 @@ facts from the company's website, gathers growth signals with Exa, synthesizes
 evidence with OpenAI, calculates an ICP score, writes an account brief, and
 caches the result in Neon PostgreSQL. This app is the interface to all of that.
 
-> **Status: Phase 2.1, live research flow.**
+> **Status: Phase 2.1, live research flow + design system and app shell.**
 > **Company Research** starts real n8n research and shows the results. The
 > other routes are still placeholders. See [docs/DEVLOG.md](docs/DEVLOG.md)
 > for progress and next steps.
@@ -32,6 +32,11 @@ npm run dev                  # → http://localhost:5173
 
 In mock mode, try `brightline-fabrication.example` or `LedgerLoop` (cached
 result), `unreachable.example` (unreachable) or any other name (not found).
+Add `VITE_MOCK_SCENARIO=empty` to preview the empty states.
+
+**Overview always uses sample data for now.** There is no n8n endpoint for
+research history yet, so even in live mode Overview shows the fictional set,
+with a "Sample data" notice.
 
 | Command           | What it does                                     |
 | ----------------- | ------------------------------------------------ |
@@ -52,6 +57,7 @@ result), `unreachable.example` (unreachable) or any other name (not found).
 | Components | shadcn/ui (Radix primitives, copied into repo) |
 | Routing    | React Router (data router)                   |
 | Icons      | Lucide React                                 |
+| Type       | Geist + Geist Mono (self-hosted via fontsource) |
 | Validation | zod (API responses)                          |
 
 There is no state library, data-fetching library or form library yet. We will
@@ -70,17 +76,27 @@ src/
 ├── app/
 │   └── router.tsx            # Route table (createBrowserRouter)
 ├── components/
-│   ├── layout/               # App shell: Sidebar, MobileNav, PageHeader, …
-│   ├── research/             # Research form, status, result views
+│   ├── common/               # Shared app components (EmptyState)
+│   ├── layout/               # App shell: AppLayout, AppSidebar, AppHeader
+│   ├── overview/             # Research bar, metric cards, companies table, activity log
+│   ├── research/             # Research form, status, results, FitBadge, skeleton
+│   ├── theme/                # ThemeProvider, ThemeToggle
 │   └── ui/                   # shadcn/ui components (generated, editable)
 ├── config/
 │   └── navigation.ts         # Sidebar links: one source of truth
 ├── hooks/
-│   └── useResearchJob.ts     # Start a job, poll until it finishes
+│   ├── useOverviewData.ts    # Companies + research-job log for Overview
+│   ├── useResearchJob.ts     # Start a job, poll until it finishes
+│   ├── useTheme.ts           # Read / set the theme preference
+│   └── use-mobile.ts         # Below-md breakpoint (sidebar drawer)
 ├── lib/
+│   ├── overview.ts           # Overview metrics, table rows, activity (derived, never hardcoded)
+│   ├── theme.ts              # Theme types, storage key, context
 │   └── utils.ts              # cn() class-name helper
 ├── mocks/
-│   └── companies.ts          # Centralized mock research records
+│   ├── companies.ts          # 14 fictional research records (scores mirror n8n scoring)
+│   ├── researchJobs.ts       # Fictional research-job log (mirrors research_jobs)
+│   └── time.ts               # Dates relative to today
 ├── pages/                    # One component per route
 ├── services/
 │   └── api/
@@ -104,7 +120,19 @@ n8n/
 docs/
 ├── DEVLOG.md                 # Changes, decisions, next steps
 └── INTEGRATION.md            # API contract, n8n setup, deployment
+PRODUCT.md                    # Product facts the design system builds on
+DESIGN.md                     # Design system: tokens, components, rules
 ```
+
+### Design system
+
+All colors live as tokens in `src/index.css`, with light and dark versions:
+zinc neutrals, deep indigo for primary actions only, and emerald / amber / red
+for High / Moderate / Low Fit. Use the token classes (`bg-card`,
+`text-muted-foreground`, `bg-success-soft`, …), never raw palette colors.
+Cards use a 1px border and no shadow. The theme follows the OS until someone
+picks one with the header toggle or in Settings. Full rules are in
+[DESIGN.md](DESIGN.md).
 
 Imports use the `@/` alias for `src/`, e.g. `import { api } from "@/services/api"`.
 
@@ -114,7 +142,7 @@ Imports use the `@/` alias for `src/`, e.g. `import { api } from "@/services/api
 
 | Path         | Page             | Purpose (future phases)                             |
 | ------------ | ---------------- | --------------------------------------------------- |
-| `/`          | Overview         | Pipeline health across researched accounts          |
+| `/`          | Overview         | **Built:** research bar, metrics, recent companies, activity (sample data) |
 | `/research`  | Company Research | **Live:** research a name or domain, view results   |
 | `/companies` | Saved Companies  | Browse every company in the research cache          |
 | `/briefs`    | Account Briefs   | Read sales-ready briefs for validated accounts      |
@@ -194,6 +222,8 @@ so loading states show up during development.
 
 - [x] **Phase 1:** Setup, routing, types, mock API, placeholders
 - [x] **Phase 2.1a:** Live research flow (jobs, status, results view)
+- [x] **Phase 2 shell:** Design system, collapsible sidebar, mobile drawer, light/dark theme
+- [x] **Phase 3:** Overview dashboard (sample data)
 - [ ] **Phase 2.1b:** Research history, saved briefs, access control, VPS deploy
 - [ ] **Phase 2.2:** Configurable ICP
 - [ ] **Phase 2.3:** Historical sales analysis (optional)

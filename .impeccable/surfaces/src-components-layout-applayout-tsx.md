@@ -43,7 +43,7 @@ a phone reach every section through a drawer.
 FIRST VIEWPORT: Left, a 240px sidebar: "Psycray" wordmark on top, five Lucide
 nav items, the placeholder user at the bottom. It collapses to a 48px icon
 rail with tooltips (amended from 56px: 48px is the rail width at which
-shadcn's 32px icon buttons center; finish review 2026-11-12). Top, a 56px header strip: collapse toggle, page title and
+shadcn's 32px icon buttons center; accepted by the user 2026-11-12). Top, a 56px header strip: collapse toggle, page title and
 one-line description, theme toggle on the right. The content column is capped
 at 1120px, with the page's primary action top-right of its first section.
 

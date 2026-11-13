@@ -31,25 +31,35 @@ function messageOf(err: unknown) {
 /** Start a research job and poll it until it reaches a final status. */
 export function useResearchJob() {
   const [state, setState] = useState<ResearchState>(initialState)
-  // Incremented on every new run / unmount so stale polls stop themselves.
+  // Incremented on every new run / reset so stale polls stop themselves.
   const runId = useRef(0)
+  // Tracks mounting separately: React StrictMode mounts twice in development,
+  // and a run started on mount must survive that simulated remount.
+  const mounted = useRef(false)
 
-  useEffect(() => () => void runId.current++, [])
+  useEffect(() => {
+    mounted.current = true
+    return () => {
+      mounted.current = false
+    }
+  }, [])
+
+  const isCurrent = (run: number) => mounted.current && runId.current === run
 
   const poll = useCallback(async (jobId: string, myRun: number) => {
     let failures = 0
-    while (runId.current === myRun) {
+    while (isCurrent(myRun)) {
       await new Promise((r) => setTimeout(r, POLL_INTERVAL_MS))
-      if (runId.current !== myRun) return
+      if (!isCurrent(myRun)) return
       try {
         const job = await api.getResearchJob(jobId)
-        if (runId.current !== myRun) return
+        if (!isCurrent(myRun)) return
         failures = 0
         setState((s) => ({ ...s, job, phase: job.status === "running" ? "running" : "done" }))
         if (job.status !== "running") return
       } catch (err) {
         if (++failures >= MAX_POLL_FAILURES) {
-          if (runId.current === myRun) setState((s) => ({ ...s, phase: "error", error: messageOf(err) }))
+          if (isCurrent(myRun)) setState((s) => ({ ...s, phase: "error", error: messageOf(err) }))
           return
         }
       }
@@ -62,11 +72,11 @@ export function useResearchJob() {
       setState({ phase: "submitting", job: null, error: null, startedAt: Date.now() })
       try {
         const { job_id } = await api.startResearch(request)
-        if (runId.current !== myRun) return
+        if (!isCurrent(myRun)) return
         setState((s) => ({ ...s, phase: "running" }))
         await poll(job_id, myRun)
       } catch (err) {
-        if (runId.current === myRun) setState((s) => ({ ...s, phase: "error", error: messageOf(err) }))
+        if (isCurrent(myRun)) setState((s) => ({ ...s, phase: "error", error: messageOf(err) }))
       }
     },
     [poll],

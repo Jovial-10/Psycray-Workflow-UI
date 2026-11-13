@@ -1,0 +1,724 @@
+{
+  "schemaVersion": 2,
+  "generatedAt": "2026-11-13T02:46:29+00:00",
+  "title": "Design System: Psycray",
+  "extensions": {
+    "colorMeta": {
+      "deep-indigo": {
+        "role": "primary",
+        "displayName": "Deep Indigo",
+        "canonical": "oklch(0.45 0.17 274)",
+        "hex": "#3c45b1",
+        "tonalRamp": [
+          "oklch(0.15 0.077 274)",
+          "oklch(0.27 0.119 274)",
+          "oklch(0.38 0.153 274)",
+          "oklch(0.48 0.17 274)",
+          "oklch(0.6 0.153 274)",
+          "oklch(0.72 0.119 274)",
+          "oklch(0.85 0.068 274)",
+          "oklch(0.95 0.02 274)"
+        ]
+      },
+      "deep-indigo-dark": {
+        "role": "primary",
+        "displayName": "Deep Indigo (dark theme)",
+        "canonical": "oklch(0.54 0.16 274)",
+        "hex": "#5462ca",
+        "tonalRamp": [
+          "oklch(0.15 0.077 274)",
+          "oklch(0.27 0.119 274)",
+          "oklch(0.38 0.153 274)",
+          "oklch(0.48 0.17 274)",
+          "oklch(0.6 0.153 274)",
+          "oklch(0.72 0.119 274)",
+          "oklch(0.85 0.068 274)",
+          "oklch(0.95 0.02 274)"
+        ]
+      },
+      "indigo-ring": {
+        "role": "primary",
+        "displayName": "Indigo Ring",
+        "canonical": "oklch(0.55 0.15 274)",
+        "hex": "#5867c8",
+        "tonalRamp": [
+          "oklch(0.15 0.077 274)",
+          "oklch(0.27 0.119 274)",
+          "oklch(0.38 0.153 274)",
+          "oklch(0.48 0.17 274)",
+          "oklch(0.6 0.153 274)",
+          "oklch(0.72 0.119 274)",
+          "oklch(0.85 0.068 274)",
+          "oklch(0.95 0.02 274)"
+        ]
+      },
+      "indigo-ring-dark": {
+        "role": "primary",
+        "displayName": "Indigo Ring (dark theme)",
+        "canonical": "oklch(0.66 0.13 274)",
+        "hex": "#7a8be1",
+        "tonalRamp": [
+          "oklch(0.15 0.077 274)",
+          "oklch(0.27 0.119 274)",
+          "oklch(0.38 0.153 274)",
+          "oklch(0.48 0.17 274)",
+          "oklch(0.6 0.153 274)",
+          "oklch(0.72 0.119 274)",
+          "oklch(0.85 0.068 274)",
+          "oklch(0.95 0.02 274)"
+        ]
+      },
+      "on-primary": {
+        "role": "neutral",
+        "displayName": "On Primary",
+        "canonical": "oklch(1 0 0)",
+        "hex": "#ffffff",
+        "tonalRamp": [
+          "oklch(0.141 0.005 285.823)",
+          "oklch(0.21 0.006 285.885)",
+          "oklch(0.274 0.006 286.033)",
+          "oklch(0.37 0.013 285.805)",
+          "oklch(0.552 0.016 285.938)",
+          "oklch(0.705 0.015 286.067)",
+          "oklch(0.871 0.006 286.286)",
+          "oklch(0.967 0.001 286.375)"
+        ]
+      },
+      "zinc-ground": {
+        "role": "neutral",
+        "displayName": "Zinc Ground",
+        "canonical": "oklch(0.985 0 0)",
+        "hex": "#fafafa",
+        "tonalRamp": [
+          "oklch(0.141 0.005 285.823)",
+          "oklch(0.21 0.006 285.885)",
+          "oklch(0.274 0.006 286.033)",
+          "oklch(0.37 0.013 285.805)",
+          "oklch(0.552 0.016 285.938)",
+          "oklch(0.705 0.015 286.067)",
+          "oklch(0.871 0.006 286.286)",
+          "oklch(0.967 0.001 286.375)"
+        ]
+      },
+      "card-white": {
+        "role": "neutral",
+        "displayName": "Card White",
+        "canonical": "oklch(1 0 0)",
+        "hex": "#ffffff",
+        "tonalRamp": [
+          "oklch(0.141 0.005 285.823)",
+          "oklch(0.21 0.006 285.885)",
+          "oklch(0.274 0.006 286.033)",
+          "oklch(0.37 0.013 285.805)",
+          "oklch(0.552 0.016 285.938)",
+          "oklch(0.705 0.015 286.067)",
+          "oklch(0.871 0.006 286.286)",
+          "oklch(0.967 0.001 286.375)"
+        ]
+      },
+      "zinc-wash": {
+        "role": "neutral",
+        "displayName": "Zinc Wash",
+        "canonical": "oklch(0.967 0.001 286.375)",
+        "hex": "#f4f4f5",
+        "tonalRamp": [
+          "oklch(0.141 0.005 285.823)",
+          "oklch(0.21 0.006 285.885)",
+          "oklch(0.274 0.006 286.033)",
+          "oklch(0.37 0.013 285.805)",
+          "oklch(0.552 0.016 285.938)",
+          "oklch(0.705 0.015 286.067)",
+          "oklch(0.871 0.006 286.286)",
+          "oklch(0.967 0.001 286.375)"
+        ]
+      },
+      "zinc-hairline": {
+        "role": "neutral",
+        "displayName": "Zinc Hairline",
+        "canonical": "oklch(0.92 0.004 286.32)",
+        "hex": "#e4e4e7",
+        "tonalRamp": [
+          "oklch(0.141 0.005 285.823)",
+          "oklch(0.21 0.006 285.885)",
+          "oklch(0.274 0.006 286.033)",
+          "oklch(0.37 0.013 285.805)",
+          "oklch(0.552 0.016 285.938)",
+          "oklch(0.705 0.015 286.067)",
+          "oklch(0.871 0.006 286.286)",
+          "oklch(0.967 0.001 286.375)"
+        ]
+      },
+      "zinc-field-stroke": {
+        "role": "neutral",
+        "displayName": "Zinc Field Stroke",
+        "canonical": "oklch(0.871 0.006 286.286)",
+        "hex": "#d4d4d8",
+        "tonalRamp": [
+          "oklch(0.141 0.005 285.823)",
+          "oklch(0.21 0.006 285.885)",
+          "oklch(0.274 0.006 286.033)",
+          "oklch(0.37 0.013 285.805)",
+          "oklch(0.552 0.016 285.938)",
+          "oklch(0.705 0.015 286.067)",
+          "oklch(0.871 0.006 286.286)",
+          "oklch(0.967 0.001 286.375)"
+        ]
+      },
+      "zinc-muted-ink": {
+        "role": "neutral",
+        "displayName": "Zinc Muted Ink",
+        "canonical": "oklch(0.552 0.016 285.938)",
+        "hex": "#71717b",
+        "tonalRamp": [
+          "oklch(0.141 0.005 285.823)",
+          "oklch(0.21 0.006 285.885)",
+          "oklch(0.274 0.006 286.033)",
+          "oklch(0.37 0.013 285.805)",
+          "oklch(0.552 0.016 285.938)",
+          "oklch(0.705 0.015 286.067)",
+          "oklch(0.871 0.006 286.286)",
+          "oklch(0.967 0.001 286.375)"
+        ]
+      },
+      "zinc-sidebar-ink": {
+        "role": "neutral",
+        "displayName": "Zinc Sidebar Ink",
+        "canonical": "oklch(0.37 0.013 285.805)",
+        "hex": "#3f3f46",
+        "tonalRamp": [
+          "oklch(0.141 0.005 285.823)",
+          "oklch(0.21 0.006 285.885)",
+          "oklch(0.274 0.006 286.033)",
+          "oklch(0.37 0.013 285.805)",
+          "oklch(0.552 0.016 285.938)",
+          "oklch(0.705 0.015 286.067)",
+          "oklch(0.871 0.006 286.286)",
+          "oklch(0.967 0.001 286.375)"
+        ]
+      },
+      "zinc-ink": {
+        "role": "neutral",
+        "displayName": "Zinc Ink",
+        "canonical": "oklch(0.21 0.006 285.885)",
+        "hex": "#18181b",
+        "tonalRamp": [
+          "oklch(0.141 0.005 285.823)",
+          "oklch(0.21 0.006 285.885)",
+          "oklch(0.274 0.006 286.033)",
+          "oklch(0.37 0.013 285.805)",
+          "oklch(0.552 0.016 285.938)",
+          "oklch(0.705 0.015 286.067)",
+          "oklch(0.871 0.006 286.286)",
+          "oklch(0.967 0.001 286.375)"
+        ]
+      },
+      "zinc-night": {
+        "role": "neutral",
+        "displayName": "Zinc Night",
+        "canonical": "oklch(0.141 0.005 285.823)",
+        "hex": "#09090b",
+        "tonalRamp": [
+          "oklch(0.141 0.005 285.823)",
+          "oklch(0.21 0.006 285.885)",
+          "oklch(0.274 0.006 286.033)",
+          "oklch(0.37 0.013 285.805)",
+          "oklch(0.552 0.016 285.938)",
+          "oklch(0.705 0.015 286.067)",
+          "oklch(0.871 0.006 286.286)",
+          "oklch(0.967 0.001 286.375)"
+        ]
+      },
+      "zinc-night-surface": {
+        "role": "neutral",
+        "displayName": "Zinc Night Surface",
+        "canonical": "oklch(0.21 0.006 285.885)",
+        "hex": "#18181b",
+        "tonalRamp": [
+          "oklch(0.141 0.005 285.823)",
+          "oklch(0.21 0.006 285.885)",
+          "oklch(0.274 0.006 286.033)",
+          "oklch(0.37 0.013 285.805)",
+          "oklch(0.552 0.016 285.938)",
+          "oklch(0.705 0.015 286.067)",
+          "oklch(0.871 0.006 286.286)",
+          "oklch(0.967 0.001 286.375)"
+        ]
+      },
+      "zinc-night-hairline": {
+        "role": "neutral",
+        "displayName": "Zinc Night Hairline",
+        "canonical": "oklch(0.274 0.006 286.033)",
+        "hex": "#27272a",
+        "tonalRamp": [
+          "oklch(0.141 0.005 285.823)",
+          "oklch(0.21 0.006 285.885)",
+          "oklch(0.274 0.006 286.033)",
+          "oklch(0.37 0.013 285.805)",
+          "oklch(0.552 0.016 285.938)",
+          "oklch(0.705 0.015 286.067)",
+          "oklch(0.871 0.006 286.286)",
+          "oklch(0.967 0.001 286.375)"
+        ]
+      },
+      "zinc-night-field-stroke": {
+        "role": "neutral",
+        "displayName": "Zinc Night Field Stroke",
+        "canonical": "oklch(0.37 0.013 285.805)",
+        "hex": "#3f3f46",
+        "tonalRamp": [
+          "oklch(0.141 0.005 285.823)",
+          "oklch(0.21 0.006 285.885)",
+          "oklch(0.274 0.006 286.033)",
+          "oklch(0.37 0.013 285.805)",
+          "oklch(0.552 0.016 285.938)",
+          "oklch(0.705 0.015 286.067)",
+          "oklch(0.871 0.006 286.286)",
+          "oklch(0.967 0.001 286.375)"
+        ]
+      },
+      "zinc-night-muted-ink": {
+        "role": "neutral",
+        "displayName": "Zinc Night Muted Ink",
+        "canonical": "oklch(0.705 0.015 286.067)",
+        "hex": "#9f9fa9",
+        "tonalRamp": [
+          "oklch(0.141 0.005 285.823)",
+          "oklch(0.21 0.006 285.885)",
+          "oklch(0.274 0.006 286.033)",
+          "oklch(0.37 0.013 285.805)",
+          "oklch(0.552 0.016 285.938)",
+          "oklch(0.705 0.015 286.067)",
+          "oklch(0.871 0.006 286.286)",
+          "oklch(0.967 0.001 286.375)"
+        ]
+      },
+      "zinc-night-ink": {
+        "role": "neutral",
+        "displayName": "Zinc Night Ink",
+        "canonical": "oklch(0.985 0 0)",
+        "hex": "#fafafa",
+        "tonalRamp": [
+          "oklch(0.141 0.005 285.823)",
+          "oklch(0.21 0.006 285.885)",
+          "oklch(0.274 0.006 286.033)",
+          "oklch(0.37 0.013 285.805)",
+          "oklch(0.552 0.016 285.938)",
+          "oklch(0.705 0.015 286.067)",
+          "oklch(0.871 0.006 286.286)",
+          "oklch(0.967 0.001 286.375)"
+        ]
+      },
+      "fit-high": {
+        "role": "tertiary",
+        "displayName": "Verdict Emerald",
+        "canonical": "oklch(0.596 0.145 163.225)",
+        "hex": "#009966",
+        "tonalRamp": [
+          "oklch(0.262 0.051 172.552)",
+          "oklch(0.378 0.077 168.94)",
+          "oklch(0.432 0.095 166.913)",
+          "oklch(0.596 0.145 163.225)",
+          "oklch(0.696 0.17 162.48)",
+          "oklch(0.845 0.143 164.978)",
+          "oklch(0.905 0.093 164.15)",
+          "oklch(0.979 0.021 166.113)"
+        ]
+      },
+      "fit-high-ink": {
+        "role": "tertiary",
+        "displayName": "Verdict Emerald Ink",
+        "canonical": "oklch(0.432 0.095 166.913)",
+        "hex": "#006045",
+        "tonalRamp": [
+          "oklch(0.262 0.051 172.552)",
+          "oklch(0.378 0.077 168.94)",
+          "oklch(0.432 0.095 166.913)",
+          "oklch(0.596 0.145 163.225)",
+          "oklch(0.696 0.17 162.48)",
+          "oklch(0.845 0.143 164.978)",
+          "oklch(0.905 0.093 164.15)",
+          "oklch(0.979 0.021 166.113)"
+        ]
+      },
+      "fit-high-soft": {
+        "role": "tertiary",
+        "displayName": "Verdict Emerald Soft",
+        "canonical": "oklch(0.979 0.021 166.113)",
+        "hex": "#ecfdf5",
+        "tonalRamp": [
+          "oklch(0.262 0.051 172.552)",
+          "oklch(0.378 0.077 168.94)",
+          "oklch(0.432 0.095 166.913)",
+          "oklch(0.596 0.145 163.225)",
+          "oklch(0.696 0.17 162.48)",
+          "oklch(0.845 0.143 164.978)",
+          "oklch(0.905 0.093 164.15)",
+          "oklch(0.979 0.021 166.113)"
+        ]
+      },
+      "fit-high-border": {
+        "role": "tertiary",
+        "displayName": "Verdict Emerald Border",
+        "canonical": "oklch(0.905 0.093 164.15)",
+        "hex": "#a4f4cf",
+        "tonalRamp": [
+          "oklch(0.262 0.051 172.552)",
+          "oklch(0.378 0.077 168.94)",
+          "oklch(0.432 0.095 166.913)",
+          "oklch(0.596 0.145 163.225)",
+          "oklch(0.696 0.17 162.48)",
+          "oklch(0.845 0.143 164.978)",
+          "oklch(0.905 0.093 164.15)",
+          "oklch(0.979 0.021 166.113)"
+        ]
+      },
+      "fit-moderate": {
+        "role": "tertiary",
+        "displayName": "Verdict Amber",
+        "canonical": "oklch(0.666 0.179 58.318)",
+        "hex": "#e17100",
+        "tonalRamp": [
+          "oklch(0.279 0.077 45.635)",
+          "oklch(0.414 0.112 45.904)",
+          "oklch(0.473 0.137 46.201)",
+          "oklch(0.666 0.179 58.318)",
+          "oklch(0.769 0.188 70.08)",
+          "oklch(0.879 0.169 91.605)",
+          "oklch(0.924 0.12 95.746)",
+          "oklch(0.987 0.022 95.277)"
+        ]
+      },
+      "fit-moderate-ink": {
+        "role": "tertiary",
+        "displayName": "Verdict Amber Ink",
+        "canonical": "oklch(0.473 0.137 46.201)",
+        "hex": "#973c00",
+        "tonalRamp": [
+          "oklch(0.279 0.077 45.635)",
+          "oklch(0.414 0.112 45.904)",
+          "oklch(0.473 0.137 46.201)",
+          "oklch(0.666 0.179 58.318)",
+          "oklch(0.769 0.188 70.08)",
+          "oklch(0.879 0.169 91.605)",
+          "oklch(0.924 0.12 95.746)",
+          "oklch(0.987 0.022 95.277)"
+        ]
+      },
+      "fit-moderate-soft": {
+        "role": "tertiary",
+        "displayName": "Verdict Amber Soft",
+        "canonical": "oklch(0.987 0.022 95.277)",
+        "hex": "#fffbeb",
+        "tonalRamp": [
+          "oklch(0.279 0.077 45.635)",
+          "oklch(0.414 0.112 45.904)",
+          "oklch(0.473 0.137 46.201)",
+          "oklch(0.666 0.179 58.318)",
+          "oklch(0.769 0.188 70.08)",
+          "oklch(0.879 0.169 91.605)",
+          "oklch(0.924 0.12 95.746)",
+          "oklch(0.987 0.022 95.277)"
+        ]
+      },
+      "fit-moderate-border": {
+        "role": "tertiary",
+        "displayName": "Verdict Amber Border",
+        "canonical": "oklch(0.924 0.12 95.746)",
+        "hex": "#fee685",
+        "tonalRamp": [
+          "oklch(0.279 0.077 45.635)",
+          "oklch(0.414 0.112 45.904)",
+          "oklch(0.473 0.137 46.201)",
+          "oklch(0.666 0.179 58.318)",
+          "oklch(0.769 0.188 70.08)",
+          "oklch(0.879 0.169 91.605)",
+          "oklch(0.924 0.12 95.746)",
+          "oklch(0.987 0.022 95.277)"
+        ]
+      },
+      "fit-low": {
+        "role": "tertiary",
+        "displayName": "Verdict Red",
+        "canonical": "oklch(0.577 0.245 27.325)",
+        "hex": "#e7000b",
+        "tonalRamp": [
+          "oklch(0.258 0.092 26.042)",
+          "oklch(0.396 0.141 25.723)",
+          "oklch(0.444 0.177 26.899)",
+          "oklch(0.577 0.245 27.325)",
+          "oklch(0.637 0.237 25.331)",
+          "oklch(0.808 0.114 19.571)",
+          "oklch(0.885 0.062 18.334)",
+          "oklch(0.971 0.013 17.38)"
+        ]
+      },
+      "fit-low-ink": {
+        "role": "tertiary",
+        "displayName": "Verdict Red Ink",
+        "canonical": "oklch(0.444 0.177 26.899)",
+        "hex": "#9f0712",
+        "tonalRamp": [
+          "oklch(0.258 0.092 26.042)",
+          "oklch(0.396 0.141 25.723)",
+          "oklch(0.444 0.177 26.899)",
+          "oklch(0.577 0.245 27.325)",
+          "oklch(0.637 0.237 25.331)",
+          "oklch(0.808 0.114 19.571)",
+          "oklch(0.885 0.062 18.334)",
+          "oklch(0.971 0.013 17.38)"
+        ]
+      },
+      "fit-low-soft": {
+        "role": "tertiary",
+        "displayName": "Verdict Red Soft",
+        "canonical": "oklch(0.971 0.013 17.38)",
+        "hex": "#fef2f2",
+        "tonalRamp": [
+          "oklch(0.258 0.092 26.042)",
+          "oklch(0.396 0.141 25.723)",
+          "oklch(0.444 0.177 26.899)",
+          "oklch(0.577 0.245 27.325)",
+          "oklch(0.637 0.237 25.331)",
+          "oklch(0.808 0.114 19.571)",
+          "oklch(0.885 0.062 18.334)",
+          "oklch(0.971 0.013 17.38)"
+        ]
+      },
+      "fit-low-border": {
+        "role": "tertiary",
+        "displayName": "Verdict Red Border",
+        "canonical": "oklch(0.885 0.062 18.334)",
+        "hex": "#ffc9c9",
+        "tonalRamp": [
+          "oklch(0.258 0.092 26.042)",
+          "oklch(0.396 0.141 25.723)",
+          "oklch(0.444 0.177 26.899)",
+          "oklch(0.577 0.245 27.325)",
+          "oklch(0.637 0.237 25.331)",
+          "oklch(0.808 0.114 19.571)",
+          "oklch(0.885 0.062 18.334)",
+          "oklch(0.971 0.013 17.38)"
+        ]
+      }
+    },
+    "themes": {
+      "mechanism": "class 'dark' on <html>; preference in localStorage key 'psycray-theme' (absent = follow OS); applied by a pre-paint script in index.html",
+      "source": "src/index.css (:root and .dark)"
+    },
+    "typographyMeta": {
+      "headline": {
+        "displayName": "Headline",
+        "purpose": "Researched company name above its result."
+      },
+      "metric": {
+        "displayName": "Metric",
+        "purpose": "The ICP score; tabular figures; the only large type."
+      },
+      "title": {
+        "displayName": "Title",
+        "purpose": "Card titles and the Psycray wordmark."
+      },
+      "page-title": {
+        "displayName": "Page Title",
+        "purpose": "Page name in the 56px header, from navigation.ts."
+      },
+      "body": {
+        "displayName": "Body",
+        "purpose": "Card content, descriptions, definition lists."
+      },
+      "nav": {
+        "displayName": "Nav",
+        "purpose": "Sidebar items; 500 weight when active."
+      },
+      "label": {
+        "displayName": "Label",
+        "purpose": "Badges, captions, timestamps, criterion reasons."
+      },
+      "mono": {
+        "displayName": "Mono",
+        "purpose": "Domains, source URLs and IDs only."
+      }
+    },
+    "shadows": [
+      {
+        "name": "control-lip",
+        "value": "0 1px 2px 0 rgb(0 0 0 / 0.05)",
+        "purpose": "Outline buttons, inputs, the selected segment of a segmented control."
+      },
+      {
+        "name": "overlay",
+        "value": "0 10px 15px -3px rgb(0 0 0 / 0.1), 0 4px 6px -4px rgb(0 0 0 / 0.1)",
+        "purpose": "Mobile navigation drawer and other overlays. Never on cards."
+      }
+    ],
+    "focus": [
+      {
+        "name": "focus-ring",
+        "value": "0 0 0 3px color-mix(in oklch, var(--ring) 50%, transparent)",
+        "purpose": "Buttons, inputs, badges; border shifts to the ring color."
+      }
+    ],
+    "motion": [
+      {
+        "name": "sidebar-collapse",
+        "value": "width 150ms ease-out",
+        "purpose": "Sidebar 240px to 48px rail and back."
+      },
+      {
+        "name": "reduced-motion",
+        "value": "transition-duration and animation-duration 0.01ms",
+        "purpose": "Applied globally under prefers-reduced-motion: reduce."
+      }
+    ],
+    "breakpoints": [
+      {
+        "name": "md",
+        "value": "768px",
+        "purpose": "Sidebar becomes a drawer below; header description and wider gutters appear above."
+      },
+      {
+        "name": "lg",
+        "value": "1024px",
+        "purpose": "Result grid splits into a fluid column plus a 20rem side column."
+      }
+    ],
+    "layout": {
+      "sidebarWidth": "240px",
+      "sidebarRailWidth": "48px",
+      "sidebarMobileWidth": "288px",
+      "sidebarShortcut": "Cmd/Ctrl+B",
+      "sidebarStateCookie": "sidebar_state (7 days)",
+      "headerHeight": "56px",
+      "contentMaxWidth": "1120px",
+      "contentPadding": "16px/24px mobile, 32px/32px from 768px"
+    },
+    "radiusBase": "--radius: 0.625rem; sm = 0.6x, md = 0.8x, lg = 1x, xl = 1.4x"
+  },
+  "components": [
+    {
+      "name": "Primary Button",
+      "kind": "button",
+      "refersTo": "button-primary",
+      "description": "The page's one primary action, top-right of its first section.",
+      "html": "<button class=\"ds-btn ds-btn-primary\"><svg xmlns=\"http://www.w3.org/2000/svg\" viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"2\" stroke-linecap=\"round\" stroke-linejoin=\"round\"><circle cx=\"11\" cy=\"11\" r=\"8\"/><path d=\"m21 21-4.3-4.3\"/></svg>Research</button>",
+      "css": ".ds-btn{display:inline-flex;align-items:center;justify-content:center;gap:8px;border-radius:calc(var(--radius,0.625rem)*0.8);font:500 14px/1 'Geist Variable',ui-sans-serif,system-ui,sans-serif;white-space:nowrap;border:1px solid transparent;cursor:pointer;transition:all .15s;outline:none}.ds-btn svg{width:16px;height:16px}.ds-btn:focus-visible{border-color:var(--ring,oklch(0.55 0.15 274));box-shadow:0 0 0 3px color-mix(in oklch,var(--ring,oklch(0.55 0.15 274)) 50%,transparent)}.ds-btn:disabled{opacity:.5;pointer-events:none}.ds-btn-primary{height:36px;padding:8px 16px;background:var(--primary,oklch(0.45 0.17 274));color:var(--primary-foreground,#fff)}.ds-btn-primary:hover{background:color-mix(in oklch,var(--primary,oklch(0.45 0.17 274)) 90%,transparent)}"
+    },
+    {
+      "name": "Outline Button",
+      "kind": "button",
+      "refersTo": "button-outline",
+      "description": "Secondary actions such as Refresh research.",
+      "html": "<button class=\"ds-btn ds-btn-outline\"><svg xmlns=\"http://www.w3.org/2000/svg\" viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"2\" stroke-linecap=\"round\" stroke-linejoin=\"round\"><path d=\"M3 12a9 9 0 0 1 9-9 9.75 9.75 0 0 1 6.74 2.74L21 8\"/><path d=\"M21 3v5h-5\"/><path d=\"M21 12a9 9 0 0 1-9 9 9.75 9.75 0 0 1-6.74-2.74L3 16\"/><path d=\"M8 16H3v5\"/></svg>Refresh research</button>",
+      "css": ".ds-btn{display:inline-flex;align-items:center;justify-content:center;gap:8px;border-radius:calc(var(--radius,0.625rem)*0.8);font:500 14px/1 'Geist Variable',ui-sans-serif,system-ui,sans-serif;white-space:nowrap;border:1px solid transparent;cursor:pointer;transition:all .15s;outline:none}.ds-btn svg{width:16px;height:16px}.ds-btn:focus-visible{border-color:var(--ring,oklch(0.55 0.15 274));box-shadow:0 0 0 3px color-mix(in oklch,var(--ring,oklch(0.55 0.15 274)) 50%,transparent)}.ds-btn:disabled{opacity:.5;pointer-events:none}.ds-btn-outline{height:32px;padding:0 10px;background:var(--card,#fff);color:var(--foreground,oklch(0.21 0.006 285.885));border-color:var(--border,oklch(0.92 0.004 286.32));box-shadow:0 1px 2px 0 rgb(0 0 0/.05)}.ds-btn-outline:hover{background:var(--accent,oklch(0.967 0.001 286.375))}"
+    },
+    {
+      "name": "Ghost Icon Button",
+      "kind": "button",
+      "refersTo": "button-ghost-icon",
+      "description": "Header controls (theme toggle, sidebar toggle); always labelled and tooltipped.",
+      "html": "<button class=\"ds-btn ds-btn-ghost\" aria-label=\"Switch to dark theme\"><svg xmlns=\"http://www.w3.org/2000/svg\" viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"2\" stroke-linecap=\"round\" stroke-linejoin=\"round\"><path d=\"M12 3a6 6 0 0 0 9 9 9 9 0 1 1-9-9Z\"/></svg></button>",
+      "css": ".ds-btn{display:inline-flex;align-items:center;justify-content:center;gap:8px;border-radius:calc(var(--radius,0.625rem)*0.8);font:500 14px/1 'Geist Variable',ui-sans-serif,system-ui,sans-serif;white-space:nowrap;border:1px solid transparent;cursor:pointer;transition:all .15s;outline:none}.ds-btn svg{width:16px;height:16px}.ds-btn:focus-visible{border-color:var(--ring,oklch(0.55 0.15 274));box-shadow:0 0 0 3px color-mix(in oklch,var(--ring,oklch(0.55 0.15 274)) 50%,transparent)}.ds-btn:disabled{opacity:.5;pointer-events:none}.ds-btn-ghost{width:32px;height:32px;padding:0;background:transparent;color:var(--foreground,oklch(0.21 0.006 285.885))}.ds-btn-ghost:hover{background:var(--accent,oklch(0.967 0.001 286.375))}"
+    },
+    {
+      "name": "Text Input",
+      "kind": "input",
+      "refersTo": "input",
+      "description": "Company name or domain field.",
+      "html": "<input class=\"ds-input\" placeholder=\"Company name or domain\">",
+      "css": ".ds-input{height:36px;width:100%;max-width:360px;padding:4px 12px;border-radius:calc(var(--radius,0.625rem)*0.8);border:1px solid var(--input,oklch(0.871 0.006 286.286));background:var(--card,#fff);color:var(--foreground,oklch(0.21 0.006 285.885));font:400 14px 'Geist Variable',ui-sans-serif,system-ui,sans-serif;box-shadow:0 1px 2px 0 rgb(0 0 0/.05);caret-color:var(--primary,oklch(0.45 0.17 274));outline:none;transition:color .15s,box-shadow .15s}.ds-input::placeholder{color:var(--muted-foreground,oklch(0.552 0.016 285.938))}.ds-input:focus-visible{border-color:var(--ring,oklch(0.55 0.15 274));box-shadow:0 0 0 3px color-mix(in oklch,var(--ring,oklch(0.55 0.15 274)) 50%,transparent)}"
+    },
+    {
+      "name": "Fit Badges",
+      "kind": "chip",
+      "refersTo": "badge-fit-high",
+      "description": "ICP tier as a tinted pill with a dot; tier always written out.",
+      "html": "<div class=\"ds-badges\"><span class=\"ds-badge ds-high\"><i></i>High Fit</span><span class=\"ds-badge ds-mod\"><i></i>Moderate Fit</span><span class=\"ds-badge ds-low\"><i></i>Low Fit</span><span class=\"ds-badge ds-review\"><i></i>Needs Review</span></div>",
+      "css": ".ds-badges{display:flex;gap:8px;flex-wrap:wrap}.ds-badge{display:inline-flex;align-items:center;gap:6px;padding:2px 8px;border-radius:9999px;border:1px solid;font:500 12px/16px 'Geist Variable',ui-sans-serif,system-ui,sans-serif;white-space:nowrap}.ds-badge i{width:6px;height:6px;border-radius:9999px}.ds-high{background:var(--success-soft,oklch(0.979 0.021 166.113));color:var(--success-foreground,oklch(0.432 0.095 166.913));border-color:var(--success-border,oklch(0.905 0.093 164.15))}.ds-high i{background:var(--success,oklch(0.596 0.145 163.225))}.ds-mod{background:var(--warning-soft,oklch(0.987 0.022 95.277));color:var(--warning-foreground,oklch(0.473 0.137 46.201));border-color:var(--warning-border,oklch(0.924 0.12 95.746))}.ds-mod i{background:var(--warning,oklch(0.666 0.179 58.318))}.ds-low{background:var(--danger-soft,oklch(0.971 0.013 17.38));color:var(--danger-foreground,oklch(0.444 0.177 26.899));border-color:var(--danger-border,oklch(0.885 0.062 18.334))}.ds-low i{background:var(--danger,oklch(0.577 0.245 27.325))}.ds-review{background:var(--muted,oklch(0.967 0.001 286.375));color:var(--muted-foreground,oklch(0.552 0.016 285.938));border-color:var(--border,oklch(0.92 0.004 286.32))}.ds-review i{background:var(--muted-foreground,oklch(0.552 0.016 285.938))}"
+    },
+    {
+      "name": "Card",
+      "kind": "card",
+      "refersTo": "card",
+      "description": "The universal container: 14px corners, one hairline, no shadow.",
+      "html": "<div class=\"ds-card\"><div class=\"ds-card-title\">Sources</div><div class=\"ds-card-desc\">Pages used as evidence for this research.</div><a class=\"ds-src\" href=\"#\">news.example/brightline-second-facility</a></div>",
+      "css": ".ds-card{max-width:420px;padding:20px;border-radius:calc(var(--radius,0.625rem)*1.4);border:1px solid var(--border,oklch(0.92 0.004 286.32));background:var(--card,#fff);color:var(--card-foreground,oklch(0.21 0.006 285.885));font-family:'Geist Variable',ui-sans-serif,system-ui,sans-serif}.ds-card-title{font-size:15px;font-weight:600;line-height:1;letter-spacing:-.025em}.ds-card-desc{margin-top:6px;font-size:14px;color:var(--muted-foreground,oklch(0.552 0.016 285.938))}.ds-src{display:inline-block;margin-top:20px;font:400 13px 'Geist Mono Variable',ui-monospace,Menlo,monospace;color:inherit;text-decoration:underline;text-decoration-color:var(--border,oklch(0.92 0.004 286.32));text-underline-offset:4px}.ds-src:hover,.ds-src:focus-visible{text-decoration-color:currentColor}"
+    },
+    {
+      "name": "Sidebar Navigation",
+      "kind": "nav",
+      "refersTo": "nav-item",
+      "description": "240px sidebar list; active item gets a soft fill, medium weight and an indigo icon.",
+      "html": "<nav class=\"ds-nav\"><a class=\"ds-nav-item\" href=\"#\"><svg viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"2\"><rect x=\"3\" y=\"3\" width=\"7\" height=\"9\" rx=\"1\"/><rect x=\"14\" y=\"3\" width=\"7\" height=\"5\" rx=\"1\"/><rect x=\"14\" y=\"12\" width=\"7\" height=\"9\" rx=\"1\"/><rect x=\"3\" y=\"16\" width=\"7\" height=\"5\" rx=\"1\"/></svg>Overview</a><a class=\"ds-nav-item\" aria-current=\"page\" href=\"#\"><svg xmlns=\"http://www.w3.org/2000/svg\" viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"2\" stroke-linecap=\"round\" stroke-linejoin=\"round\"><circle cx=\"11\" cy=\"11\" r=\"8\"/><path d=\"m21 21-4.3-4.3\"/></svg>Company Research</a><a class=\"ds-nav-item\" href=\"#\"><svg viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"2\"><path d=\"M15 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7Z\"/><path d=\"M14 2v4a2 2 0 0 0 2 2h4\"/></svg>Account Briefs</a></nav>",
+      "css": ".ds-nav{display:flex;flex-direction:column;gap:2px;width:224px;padding:8px;background:var(--sidebar,oklch(0.985 0 0));border-right:1px solid var(--sidebar-border,oklch(0.92 0.004 286.32))}.ds-nav-item{display:flex;align-items:center;gap:8px;height:32px;padding:0 8px;border-radius:calc(var(--radius,0.625rem)*0.8);font:400 13.5px 'Geist Variable',ui-sans-serif,system-ui,sans-serif;color:var(--sidebar-foreground,oklch(0.37 0.013 285.805));text-decoration:none;outline:none}.ds-nav-item svg{width:16px;height:16px;flex-shrink:0}.ds-nav-item:hover,.ds-nav-item[aria-current=page]{background:var(--sidebar-accent,oklch(0.92 0.004 286.32/.6));color:var(--sidebar-accent-foreground,oklch(0.141 0.005 285.823))}.ds-nav-item[aria-current=page]{font-weight:500}.ds-nav-item[aria-current=page] svg{color:var(--primary,oklch(0.45 0.17 274))}.ds-nav-item:focus-visible{box-shadow:0 0 0 2px var(--sidebar-ring,oklch(0.55 0.15 274))}"
+    },
+    {
+      "name": "ICP Scorecard",
+      "kind": "custom",
+      "refersTo": "card",
+      "description": "Signature: tabular score, fit badge, and per-criterion bars in foreground (never verdict hues).",
+      "html": "<div class=\"ds-card ds-score\"><div class=\"ds-card-title\">ICP Score</div><div class=\"ds-score-head\"><span class=\"ds-score-num\">95</span><span class=\"ds-score-of\">/ 100</span><span class=\"ds-badge ds-high\"><i></i>High Fit</span></div><div class=\"ds-crit\"><div class=\"ds-crit-row\"><b>Industry Fit</b><span>30 / 35</span></div><div class=\"ds-bar\"><div style=\"width:86%\"></div></div><p>Met · Target vertical: Manufacturing</p></div><div class=\"ds-crit\"><div class=\"ds-crit-row\"><b>Company Size</b><span>— / 15</span></div><div class=\"ds-bar\"><div style=\"width:0\"></div></div><p><em>Unknown</em> · Employee count not found</p></div></div>",
+      "css": ".ds-card{padding:20px;border-radius:calc(var(--radius,0.625rem)*1.4);border:1px solid var(--border,oklch(0.92 0.004 286.32));background:var(--card,#fff);color:var(--card-foreground,oklch(0.21 0.006 285.885));font-family:'Geist Variable',ui-sans-serif,system-ui,sans-serif}.ds-score{width:320px}.ds-card-title{font-size:15px;font-weight:600;line-height:1;letter-spacing:-.025em}.ds-score-head{display:flex;align-items:baseline;gap:8px;margin:20px 0 16px}.ds-score-num{font-size:36px;font-weight:600;font-variant-numeric:tabular-nums;line-height:1.1}.ds-score-of{font-size:14px;color:var(--muted-foreground,oklch(0.552 0.016 285.938))}.ds-badge{margin-left:auto;align-self:center;display:inline-flex;align-items:center;gap:6px;padding:2px 8px;border-radius:9999px;border:1px solid var(--success-border,oklch(0.905 0.093 164.15));background:var(--success-soft,oklch(0.979 0.021 166.113));color:var(--success-foreground,oklch(0.432 0.095 166.913));font-size:12px;font-weight:500}.ds-badge i{width:6px;height:6px;border-radius:9999px;background:var(--success,oklch(0.596 0.145 163.225))}.ds-crit{font-size:14px;margin-top:12px}.ds-crit-row{display:flex;justify-content:space-between}.ds-crit-row b{font-weight:500}.ds-crit-row span{font-variant-numeric:tabular-nums;color:var(--muted-foreground,oklch(0.552 0.016 285.938))}.ds-bar{margin-top:4px;height:6px;border-radius:9999px;overflow:hidden;background:var(--muted,oklch(0.967 0.001 286.375))}.ds-bar div{height:100%;border-radius:9999px;background:color-mix(in oklch,var(--foreground,oklch(0.21 0.006 285.885)) 80%,transparent)}.ds-crit p{margin:4px 0 0;font-size:12px;color:var(--muted-foreground,oklch(0.552 0.016 285.938))}"
+    }
+  ],
+  "narrative": {
+    "northStar": "The Quiet Instrument",
+    "overview": "Psycray is an internal tool for operators: sales and business-development people who sit with it for long sessions, research a company, read the evidence and decide whether to pursue it. The interface behaves like a well-made measuring instrument. The chrome is near-monochrome zinc, so the few saturated marks on screen carry meaning: deep indigo says \"act here\", and emerald, amber and red give the fit verdict. Everything else stays out of the way.\n\nDensity is moderate and calm. Screens use dense type (14px body, 13px mono) on a generous container, with 1px hairlines rather than shadows separating surfaces. The system rejects the category default of gradient hero cards, glowing stat tiles and decorative charts; a number appears only when it was measured, and it is set in tabular figures.\n\nThe brand is the word \"Psycray\" in Geist semibold. No logo, wordmark or brand color exists, so none is invented.",
+    "keyCharacteristics": [
+      "Zinc neutrals in both themes; one deep-indigo accent reserved for primary actions, focus and the active nav icon.",
+      "Fit tiers in semantic color: emerald High, amber Moderate, red Low, slate Needs Review, always as a tinted badge with a dot.",
+      "Flat surfaces separated by a single 1px border; shadows only on overlays.",
+      "Geist for UI, Geist Mono for domains and URLs, tabular numerals for every metric.",
+      "Theme follows the OS, remembers an explicit choice, and is applied before first paint."
+    ],
+    "rules": [
+      {
+        "name": "The Meaningful Saturation Rule",
+        "body": "Chrome is monochrome. A saturated color on screen is either indigo (act here, focus, where you are) or a verdict hue. Nothing decorative is colored.",
+        "section": "colors"
+      },
+      {
+        "name": "The Verdict Palette Rule",
+        "body": "Emerald, amber and red mean High, Moderate and Low Fit (and success, warning, error). Never use them for decoration, and never show Needs Review or \"unknown\" in a verdict hue; unknown is not failure.",
+        "section": "colors"
+      },
+      {
+        "name": "The Semantic Token Rule",
+        "body": "Components reference semantic tokens only, so light and dark stay in step. A raw `bg-indigo-600` or `text-zinc-500` in a component is a bug.",
+        "section": "colors"
+      },
+      {
+        "name": "The Tabular Metric Rule",
+        "body": "Every number that is compared or scored (score, `20 / 20`, counts) uses `tabular-nums`, so columns of figures align.",
+        "section": "typography"
+      },
+      {
+        "name": "The Machine Identifier Rule",
+        "body": "Domains, URLs and IDs are set in Geist Mono; human language never is.",
+        "section": "typography"
+      },
+      {
+        "name": "The One Hairline Rule",
+        "body": "Containers are separated by exactly one 1px border in the hairline token. No card shadows, no double borders, no colored side stripes.",
+        "section": "elevation"
+      }
+    ],
+    "dos": [
+      "**Do** reference semantic tokens (`bg-card`, `text-muted-foreground`, `border-success-border`) so both themes stay correct.",
+      "**Do** keep indigo to the primary action, focus rings and the active nav icon.",
+      "**Do** show fit tiers with `FitBadge`: soft verdict fill, a dot, and the tier written out.",
+      "**Do** separate surfaces with one 1px hairline and 14px corners; keep controls at 8px.",
+      "**Do** set domains and URLs in Geist Mono at 13px, and every compared number in tabular figures.",
+      "**Do** add new pages to `src/config/navigation.ts` with a one-line description; the header reads its title from there.",
+      "**Do** give every icon-only control an aria-label and a tooltip.",
+      "**Do** honor reduced motion; the global rule already shortens transitions and animations to 0.01 ms."
+    ],
+    "donts": [
+      "**Don't** put shadows on cards or other in-flow surfaces; shadows are for overlays.",
+      "**Don't** use emerald, amber or red for anything except verdicts and status, and don't color Needs Review or unknown data as failure.",
+      "**Don't** use gradient hero cards, glowing stat tiles or decorative charts.",
+      "**Don't** invent a logo or a brand color for Psycray; the brand is the word.",
+      "**Don't** use raw Tailwind palette classes (`bg-indigo-600`, `text-zinc-500`) inside components.",
+      "**Don't** present mock data as real; keep the amber \"Mock data\" badge visible whenever the API runs in mock mode."
+    ]
+  }
+}

@@ -214,6 +214,24 @@ export interface StartResearchResponse {
   duplicate: boolean
 }
 
+/** Saved research records plus where they came from. */
+export interface CompanyList {
+  records: CompanyResearchRecord[]
+  /**
+   * "sample" = fictional mock records (shown with a notice).
+   * "live" = the company_research table, once a history endpoint exists.
+   */
+  source: "live" | "sample"
+}
+
+/** One row of the `research_jobs` log, as used by the activity feed. */
+export type ResearchJobSummary = Pick<ResearchJob, "job_id" | "status" | "input" | "domain" | "error" | "created_at">
+
+export interface ResearchJobList {
+  jobs: ResearchJobSummary[]
+  source: "live" | "sample"
+}
+
 /** Reply to `GET /api/research/status?id=…`. */
 export interface ResearchJob {
   job_id: string

@@ -1,4 +1,10 @@
-import type { ResearchJob, ResearchRequest, StartResearchResponse } from "@/types/research"
+import type {
+  CompanyList,
+  ResearchJob,
+  ResearchJobList,
+  ResearchRequest,
+  StartResearchResponse,
+} from "@/types/research"
 
 /**
  * The contract every backend implementation must satisfy.
@@ -11,6 +17,12 @@ export interface ResearchApi {
 
   /** Current state of a research job, including the result once finished. */
   getResearchJob(jobId: string): Promise<ResearchJob>
+
+  /** Researched companies (validated and unreachable), newest first. */
+  listCompanies(): Promise<CompanyList>
+
+  /** Recent research requests and their outcomes, newest first. */
+  listResearchJobs(): Promise<ResearchJobList>
 }
 
 /** A failed API call, with a message that is safe to show to users. */

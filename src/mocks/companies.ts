@@ -1,16 +1,140 @@
-import type { CompanyResearchRecord } from "@/types/research"
+import type {
+  CompanyResearchRecord,
+  CustomerType,
+  IcpCriterionScore,
+  IcpTier,
+} from "@/types/research"
+import { ago } from "./time"
 
 /**
  * Centralized mock data. Every record mirrors a row in `company_research`.
  * Companies and domains are fictional (`.example` TLD) — do not treat any
  * of this as real research.
+ *
+ * Dates are relative to page load so "recent" metrics stay realistic.
+ * Scores are built from the same criteria and points as the n8n
+ * "ICP Scoring Logic" node, so score, tier and breakdown always agree.
  */
+
+
+interface Criteria {
+  /** 35 = SaaS/technology, 30 = manufacturing/industrial/logistics, 0 = other */
+  industry: 35 | 30 | 0
+  digital: boolean
+  growth: boolean
+}
+
+/** Mirrors the n8n scoring node: baseline 20 + criteria, tiers at 80 / 55. */
+function score({ industry, digital, growth }: Criteria) {
+  const breakdown: IcpCriterionScore[] = [
+    { criterion: "Baseline", score: 20, max: 20, status: "met", reason: "Starting score for every researched company" },
+    {
+      criterion: "Industry Fit",
+      score: industry,
+      max: 35,
+      status: industry ? "met" : "not_met",
+      reason:
+        industry === 35
+          ? "Core vertical: SaaS/Technology"
+          : industry === 30
+            ? "Target vertical: Manufacturing/Industrial/Logistics"
+            : "Not in a core or target vertical",
+    },
+    {
+      criterion: "Digital Opportunity",
+      score: digital ? 25 : 0,
+      max: 25,
+      status: digital ? "met" : "not_met",
+      reason: digital ? "Workflow, automation, portal or integration need found" : "No workflow or integration need found",
+    },
+    {
+      criterion: "Growth Signals",
+      score: growth ? 20 : 0,
+      max: 20,
+      status: growth ? "met" : "not_met",
+      reason: growth ? "Growth, hiring, funding or partnership signals found" : "No growth signals found",
+    },
+  ]
+  const total = breakdown.reduce((sum, c) => sum + c.score, 0)
+  const tier: IcpTier = total >= 80 ? "High Fit" : total >= 55 ? "Moderate Fit" : "Low Fit"
+  return { icp_score: total, icp_tier: tier, icp_breakdown: breakdown }
+}
+
+interface MockCompany {
+  id: number
+  name: string
+  domain: string
+  daysAgo: number
+  summary: string
+  industries: string[]
+  products: string[]
+  hq: string
+  customers?: CustomerType[]
+  technologies?: string[]
+  /** Omit for "Needs Review" (synthesis was not valid JSON). */
+  criteria?: Criteria
+}
+
+/** Compact builder for the bulk of the mock set. */
+function company(c: MockCompany): CompanyResearchRecord {
+  const site = `https://${c.domain}`
+  const scoring = c.criteria
+    ? score(c.criteria)
+    : { icp_score: null, icp_tier: "Needs Review" as const, icp_breakdown: [] }
+  return {
+    id: c.id,
+    domain: c.domain,
+    status: "validated",
+    updated_at: ago(c.daysAgo),
+    company_facts: {
+      company_name: c.name,
+      value_proposition: c.summary,
+      products_and_services: c.products,
+      target_industries: c.industries,
+      customer_types: c.customers ?? ["B2B"],
+      headquarters_locations: [c.hq],
+      detected_technologies: c.technologies ?? [],
+    },
+    research_signals: { results: [] },
+    synthesized_research: {
+      company_name: c.name,
+      domain: c.domain,
+      summary: c.summary,
+      confirmed_facts: [{ fact: c.summary, source: site }],
+      reasonable_inferences: [],
+      unknowns: ["Employee count", "Annual revenue"],
+      recent_signals: [],
+    },
+    sources: { urls: [site] },
+    ...scoring,
+    account_brief: `Company Summary\n${c.summary}`,
+  }
+}
+
+/** A domain the workflow could not reach. */
+function unreachable(id: number, domain: string, daysAgo: number): CompanyResearchRecord {
+  return {
+    id,
+    domain,
+    status: "error/unreachable",
+    updated_at: ago(daysAgo),
+    company_facts: null,
+    research_signals: null,
+    synthesized_research: null,
+    sources: null,
+    icp_score: null,
+    icp_tier: null,
+    icp_breakdown: null,
+    account_brief: null,
+  }
+}
+
 export const mockCompanies: CompanyResearchRecord[] = [
   {
     id: 1,
     domain: "brightline-fabrication.example",
     status: "validated",
-    updated_at: "2026-10-28T14:12:00.000Z",
+    updated_at: ago(0.2),
     company_facts: {
       company_name: "Brightline Fabrication",
       value_proposition:
@@ -96,7 +220,7 @@ Potential Psycray Service Opportunities
     id: 2,
     domain: "ledgerloop.example",
     status: "validated",
-    updated_at: "2026-10-21T09:40:00.000Z",
+    updated_at: ago(1.1),
     company_facts: {
       company_name: "LedgerLoop",
       value_proposition: "Accounts-payable automation for regional credit unions.",
@@ -156,18 +280,125 @@ Potential Psycray Service Opportunities
 Company Summary
 SaaS platform automating accounts payable for credit unions. A new core-banking partnership points to near-term integration work.`,
   },
-  {
-    id: 3,
-    domain: "harborview-association.example",
-    status: "error/unreachable",
-    updated_at: "2026-10-30T18:05:00.000Z",
-    company_facts: null,
-    research_signals: null,
-    synthesized_research: null,
-    sources: null,
-    icp_score: null,
-    icp_tier: null,
-    icp_breakdown: null,
-    account_brief: null,
-  },
+  unreachable(3, "harborview-association.example", 2.4),
+  company({
+    id: 4,
+    name: "Cobalt Ridge Software",
+    domain: "cobaltridge.example",
+    daysAgo: 0.08,
+    summary: "Field-service scheduling SaaS for HVAC contractors; recently raised a Series A and is hiring integration engineers.",
+    industries: ["Software", "HVAC services"],
+    products: ["Dispatch scheduling", "Technician mobile app"],
+    hq: "Madison, WI",
+    technologies: ["React", "Twilio", "QuickBooks API"],
+    criteria: { industry: 35, digital: true, growth: true },
+  }),
+  company({
+    id: 5,
+    name: "Northgate Logistics",
+    domain: "northgate-logistics.example",
+    daysAgo: 3.2,
+    summary: "Regional 3PL running warehouse intake on spreadsheets and email; customer portal requests mentioned on site.",
+    industries: ["Logistics", "Warehousing"],
+    products: ["Contract warehousing", "Last-mile delivery"],
+    hq: "Indianapolis, IN",
+    technologies: ["WordPress"],
+    criteria: { industry: 30, digital: true, growth: false },
+  }),
+  company({
+    id: 6,
+    name: "Saltmarsh Creative",
+    domain: "saltmarsh.example",
+    daysAgo: 2.1,
+    summary: "Brand and web agency adding a development practice; partnering with a headless CMS vendor.",
+    industries: ["Marketing agencies"],
+    products: ["Brand strategy", "Website design"],
+    hq: "Charleston, SC",
+    technologies: ["Webflow", "HubSpot"],
+    criteria: { industry: 0, digital: true, growth: true },
+  }),
+  company({
+    id: 7,
+    name: "Pinecrest Dental Group",
+    domain: "pinecrestdental.example",
+    daysAgo: 4.5,
+    summary: "Multi-location dental practice opening two new offices this year.",
+    industries: ["Healthcare"],
+    products: ["General dentistry", "Orthodontics"],
+    hq: "Boise, ID",
+    customers: ["B2C"],
+    criteria: { industry: 0, digital: false, growth: true },
+  }),
+  company({
+    id: 8,
+    name: "Quarry Lane Outfitters",
+    domain: "quarrylane.example",
+    daysAgo: 5.7,
+    summary: "Outdoor gear retailer with a small wholesale program.",
+    industries: ["Retail"],
+    products: ["Outdoor apparel", "Camping gear"],
+    hq: "Bend, OR",
+    customers: ["B2C", "B2B"],
+  }),
+  unreachable(9, "bluewater-events.example", 8.3),
+  company({
+    id: 10,
+    name: "Meridian Valve & Supply",
+    domain: "meridianvalve.example",
+    daysAgo: 9.4,
+    summary: "Industrial valve distributor whose distributor ordering still runs through fax and PDF forms.",
+    industries: ["Industrial supply", "Oil & gas"],
+    products: ["Industrial valves", "Actuation"],
+    hq: "Tulsa, OK",
+    technologies: ["Epicor"],
+    criteria: { industry: 30, digital: true, growth: false },
+  }),
+  company({
+    id: 11,
+    name: "Tallgrass Analytics",
+    domain: "tallgrass.example",
+    daysAgo: 12.2,
+    summary: "Agronomy analytics SaaS that needs integrations with farm-equipment telemetry platforms.",
+    industries: ["Software", "Agriculture"],
+    products: ["Yield analytics", "Field reporting"],
+    hq: "Ames, IA",
+    technologies: ["Python", "AWS"],
+    criteria: { industry: 35, digital: true, growth: false },
+  }),
+  company({
+    id: 12,
+    name: "Ironwood Packaging",
+    domain: "ironwoodpack.example",
+    daysAgo: 15.6,
+    summary: "Corrugated packaging manufacturer with a modern ERP and an in-house IT team.",
+    industries: ["Manufacturing", "Packaging"],
+    products: ["Corrugated boxes", "Custom displays"],
+    hq: "Dayton, OH",
+    technologies: ["SAP Business One"],
+    criteria: { industry: 30, digital: false, growth: false },
+  }),
+  company({
+    id: 13,
+    name: "Fieldstone Credit Union",
+    domain: "fieldstonecu.example",
+    daysAgo: 20.3,
+    summary: "Community credit union with core-banking vendor tooling and no visible custom software needs.",
+    industries: ["Financial services"],
+    products: ["Consumer banking", "Auto loans"],
+    hq: "Lansing, MI",
+    customers: ["B2C"],
+    criteria: { industry: 0, digital: false, growth: false },
+  }),
+  company({
+    id: 14,
+    name: "Copperline Robotics",
+    domain: "copperline.example",
+    daysAgo: 26.8,
+    summary: "Builds palletizing robots and software; expanding into Mexico and hiring for systems integration.",
+    industries: ["Industrial automation", "Robotics"],
+    products: ["Palletizing cells", "Fleet software"],
+    hq: "Grand Rapids, MI",
+    technologies: ["ROS", "Azure IoT"],
+    criteria: { industry: 35, digital: true, growth: true },
+  }),
 ]

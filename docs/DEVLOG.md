@@ -14,6 +14,7 @@ Major changes and decisions, plus what comes next. Newest entries first.
 | **Phase** | 2.1: frontend and research dashboard |
 | **State** | ✅ **Phase 2.1a done.** All 5 cases pass end to end on real n8n |
 | **Next** | Research history (Phase 2.1b). Decide on the scoring quick fix |
+| **Design** | Design system and app shell done (zinc + deep indigo, Geist, light/dark). See [DESIGN.md](../DESIGN.md) |
 | **Data source** | Live n8n via `/api` (`VITE_API_MODE=mock` for mock data) |
 
 ---
@@ -41,7 +42,7 @@ Major changes and decisions, plus what comes next. Newest entries first.
 
 ### Phase 2.1b: rest of the dashboard
 
-- [ ] Research history: `GET /companies` and `GET /companies/:domain` (n8n API workflow), Saved Companies page
+- [ ] Research history: `GET /companies`, `GET /companies/:domain` and `GET /research/jobs` (n8n API workflow). This replaces Overview's sample data and powers Saved Companies
 - [ ] Open a past Account Brief from history without re-running research
 - [ ] Structured brief: confirmed facts vs inferences, signals with dates, source per claim
 - [ ] Access control (login) before public hosting
@@ -69,6 +70,86 @@ Major changes and decisions, plus what comes next. Newest entries first.
 ---
 
 ## Log
+
+### 2026-11-12 · Overview dashboard (Phase 3)
+
+**Your decisions:** Overview shows labelled **sample data** even in live mode
+until a history endpoint exists · "Research Company" **starts research
+immediately** on the research page · "Recently researched" = **last 7 days** ·
+table and activity **stacked** (six columns don't fit beside activity) ·
+one more fix round after review.
+
+**Built**
+
+- **Research bar:** goes to `/research?q=…`, which starts the run at once.
+  Submitting it empty focuses the input. `useResearchJob` was made safe for
+  React StrictMode's double mount, which would otherwise have cancelled a run
+  started on mount.
+- **Metrics** (`src/lib/overview.ts`), all derived from the records:
+  researched (+ unreachable), high-fit (with share), average ICP (with count
+  scored), last 7 days. Checked against a hand calculation: 12 (+2) · 4 (33%)
+  · 70 across 11 · 7.
+- **Recent companies table:** columns respond to the table's own width, since
+  the sidebar changes the space available. All six columns show from 1280px.
+  On narrow widths the domain moves under the name and truncates to the cell.
+  Overflow is 0px at 360 to 1440px.
+- **Recent activity:** a log of research *requests* and outcomes (reopened
+  saved research, no website found, unreachable, failed), from a new mock
+  `research_jobs` log. It complements the table instead of repeating it.
+- **States:** loading skeletons that mirror the layout (0px shift when data
+  arrives), an error state with retry, and an empty state (no notice over an
+  empty list).
+- **Data:** 14 fictional companies (dates relative to today, scores built
+  with the n8n scoring rules), a mock job log, and `listCompanies` /
+  `listResearchJobs` on the API. The live client serves the sample set until
+  the n8n endpoints exist. The header badge now says "Sample data".
+- **Design system:** added the `table` component and a compact-metric type
+  step in DESIGN.md.
+
+**Review:** the independent finish review ran three rounds (8 fixes, then 3
+small mobile and tablet follow-ups you approved). Final verdict: *ship*.
+Detector clean. Typecheck, lint and build pass.
+
+### 2026-11-12 · Design system and application shell
+
+Built with the **impeccable** design plugin. Product facts went into
+`PRODUCT.md`. The design direction was pinned by the brief (Linear / Vercel /
+Untitled UI; zinc, deep indigo, Geist), so no direction exploration ran.
+
+**Decisions** (your answers): Geist · zinc neutrals · theme follows the OS ·
+plain "Psycray" wordmark, no invented logo · placeholder user in the footer ·
+48px collapsed rail (accepted after review).
+
+**Built**
+
+- **Tokens** (`src/index.css`): light uses a zinc-50 background and white
+  cards. Dark uses zinc-950 / 900 / 800. The accent is a deep indigo
+  (`#3c45b1` light, `#5462ca` dark). Fit tiers have semantic
+  success / warning / danger tokens. Selection, scrollbars and the text
+  cursor are themed, and motion respects reduced-motion settings.
+- **Shell:** shadcn `sidebar` (240px, collapsing to a 48px rail with ⌘B,
+  state kept in a cookie, drawer below 768px with a close button), a sticky
+  header (page title and description, a focusable "Mock data" indicator, the
+  theme toggle), a skip link, and content capped at 1120px.
+- **Theme:** a pre-paint script avoids a flash of the wrong theme. The choice
+  is remembered, and Settings → Appearance offers Light / Dark / System.
+- **Components:** cards use a border only. Badges gained
+  success / warning / danger / neutral. New: `FitBadge`, `EmptyState`,
+  `ResultSkeleton`.
+- **Pages:** honest empty states with a next action. Company Research shows a
+  skeleton while research runs, brief section headings, and sources in
+  Geist Mono.
+- **Removed:** the old `Sidebar`, `MobileNav`, `PageHeader` and
+  `PlaceholderPanel`.
+
+**Review:** an independent finish review returned *fix* (8 items). All were
+applied and confirmed resolved over two rounds, including lowering an accent
+that read as electric violet. The design detector found no issues. Typecheck,
+lint and build pass, with no console errors.
+
+**Lost:** the n8n workflow generator script lived in a temporary folder that
+was cleared. Future workflow fixes edit
+`n8n/workflows/psycray-research-agent-v2.json` directly.
 
 ### 2026-11-10 · All end-to-end cases pass
 

@@ -7,10 +7,12 @@ interface ResearchFormProps {
   onSubmit: (input: string) => void
   /** Disables the form while a request is in flight (prevents duplicates). */
   busy: boolean
+  /** Prefills the input (e.g. a company handed off from Overview). */
+  initialValue?: string
 }
 
-export function ResearchForm({ onSubmit, busy }: ResearchFormProps) {
-  const [value, setValue] = useState("")
+export function ResearchForm({ onSubmit, busy, initialValue = "" }: ResearchFormProps) {
+  const [value, setValue] = useState(initialValue)
   const trimmed = value.trim()
 
   function handleSubmit(e: FormEvent) {

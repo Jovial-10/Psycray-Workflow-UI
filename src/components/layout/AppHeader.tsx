@@ -36,7 +36,7 @@ export function AppHeader() {
           <Tooltip>
             <TooltipTrigger asChild>
               <Badge variant="warning" tabIndex={0} className="cursor-default">
-                Mock data
+                Sample data
               </Badge>
             </TooltipTrigger>
             <TooltipContent className="max-w-64">
