@@ -22,6 +22,8 @@ n8n webhooks (Header Auth)
    │
    ├─ Psycray Research Agent v2         POST  /research          → starts a job
    └─ Psycray Research API              GET   /research/status   → job + result
+                                        GET   /companies         → saved research (history)
+                                        GET   /research/jobs     → recent requests (activity)
                                         Error Trigger            → marks job failed
    ▼
 Neon Postgres                           company_research · research_jobs
@@ -85,9 +87,31 @@ second run.
 { "error": "Research job not found." }
 ```
 
+### `GET /companies`
+
+```jsonc
+// 200 OK: up to 200 company_research rows, newest first
+{ "records": [ { "domain": "zapier.com", "status": "validated", "icp_score": 100, … } ] }
+```
+
+Rows include unreachable domains (`status: "error/unreachable"`). Overview
+and Saved Companies read this list, so opening a company never re-runs research.
+
+### `GET /research/jobs`
+
+```jsonc
+// 200 OK: up to 50 research_jobs rows, newest first
+{ "jobs": [ { "job_id": "…", "status": "cached", "input": "Zapier", "domain": "zapier.com", "error": null, "created_at": "…" } ] }
+```
+
+Jobs stuck in `running` for over 10 minutes are reported as `failed`, the same
+as `/research/status`.
+
 The frontend checks every response with zod (`src/services/api/schemas.ts`).
 Fields the LLM wrote are parsed leniently: a malformed value falls back to
-empty instead of failing the whole result.
+empty instead of failing the whole result. The list endpoints validate row by
+row, so one malformed older row is skipped (with a console warning) instead of
+breaking the page.
 
 ---
 

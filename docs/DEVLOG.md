@@ -13,7 +13,7 @@ Major changes and decisions, plus what comes next. Newest entries first.
 | --- | --- |
 | **Phase** | 2.1: frontend and research dashboard |
 | **State** | ✅ **Phase 2.1a done.** All 5 cases pass end to end on real n8n |
-| **Next** | Research history (Phase 2.1b). Decide on the scoring quick fix |
+| **Next** | Saved Companies page on the new history endpoint (Phase 2.1b) |
 | **Design** | Design system and app shell done (zinc + deep indigo, Geist, light/dark). See [DESIGN.md](../DESIGN.md) |
 | **Data source** | Live n8n via `/api` (`VITE_API_MODE=mock` for mock data) |
 
@@ -36,17 +36,20 @@ Major changes and decisions, plus what comes next. Newest entries first.
 - [x] Re-imported Agent v2 → Bug 1 fixed: **valid domain ✅ · cached ✅**
 - [x] Bug 2 diagnosed and fixed in the file (no `URL` global in n8n's Code sandbox)
 - [x] Re-imported Agent v2 → **company name ✅** ("Zapier" → zapier.com, fresh with `refresh: true`)
-- [ ] Scoring misses obvious fits (Basecamp scored 20). Fix in Phase 2.2 or as a quick patch, your call
+- [ ] Scoring misses obvious fits (Basecamp scored 20). **Deferred** (your call: fix later)
 - [ ] Growth signals pick up other companies with the same name (e.g. Basecamp Research)
-- [ ] Measure real run times and adjust the "taking longer than usual" threshold (90 s)
+- [x] Real run times measured (23–25 s fresh); the 90 s "taking longer than usual" threshold stays
 
 ### Phase 2.1b: rest of the dashboard
 
-- [ ] Research history: `GET /companies`, `GET /companies/:domain` and `GET /research/jobs` (n8n API workflow). This replaces Overview's sample data and powers Saved Companies
+- [x] Research history endpoints `GET /companies` and `GET /research/jobs` added to the live API workflow. **Overview now shows real data**
+- [ ] Saved Companies page (searchable list, open saved research without re-running, Refresh)
+- [ ] `GET /companies/:domain`, only if a page needs a single record (the list already returns full rows)
+- [ ] Industry column: the workflow only extracts the industries a company *serves*, so NVIDIA shows "Automotive" (see log)
 - [ ] Open a past Account Brief from history without re-running research
 - [ ] Structured brief: confirmed facts vs inferences, signals with dates, source per claim
-- [ ] Access control (login) before public hosting
-- [ ] Deploy to the Psycray VPS (nginx config in [INTEGRATION.md](INTEGRATION.md#production-vps))
+- [ ] Access control before public hosting. **Deferred** (you'll decide later)
+- [ ] Deploy to the Psycray VPS (nginx config in [INTEGRATION.md](INTEGRATION.md#production-vps)). **Waiting** on VPS details from you
 
 ### Later
 
@@ -65,11 +68,33 @@ Major changes and decisions, plus what comes next. Newest entries first.
 | 4 | Login | ⏸ After end-to-end testing |
 | 5 | Test webhook secret in `.env.local` | ✅ Done |
 | 6 | Exa output for "Zapier" | ✅ One item per result (`id`, `url`, `title`, `author`) |
-| 7 | A working `N8N_API_KEY` (current value is rejected with 401) | Open, optional |
+| 7 | A working `N8N_API_KEY` | ✅ Works. Used to read executions and update Psycray workflows (with your go-ahead) |
 
 ---
 
 ## Log
+
+### 2026-11-13 · Research history connected (Phase 2.1b, step 1)
+
+- **n8n API key working.** It lists your workflows. Active: *Psycray Research
+  Agent v2* (`w3vjp1…`), *Psycray Research API* (`oRmS31…`). An inactive
+  duplicate of v2 (`6vn11B…`) can be deleted. *Nathan's Workflow* is not ours.
+- **Live workflow changed, with your go-ahead.** Added `GET /companies`
+  (up to 200 `company_research` rows) and `GET /research/jobs` (up to 50
+  `research_jobs` rows) to *Psycray Research API*, behind the same Header Auth.
+  The existing status endpoint and error handler are untouched (checked: 403
+  without a key, 404 for an unknown job). The pre-change version is backed up
+  at `n8n/workflows/backups/psycray-research-api.2026-11-13.json`, and
+  `n8n/workflows/psycray-research-api.json` is now an export of the live
+  version.
+- **Frontend:** the live client calls the new endpoints. Lists validate row by
+  row, skipping a malformed old row instead of failing. **Overview now shows
+  real data:** 20 researched (+3 unreachable), 5 high-fit, average 62, 8 in
+  the last 7 days. No rows skipped, no console errors.
+- **Found on real data:** the Industry column reads `target_industries`, the
+  industries a company *sells to*, so NVIDIA and Salesforce show "Automotive".
+  The real fix is a company `industry` field in *Extract Core Company Facts*
+  (an n8n change), or renaming the column.
 
 ### 2026-11-12 · Overview dashboard (Phase 3)
 

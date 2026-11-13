@@ -1,6 +1,10 @@
 import type { z } from "zod"
-import { researchJobSchema, startResearchResponseSchema } from "./schemas"
-import { mockResearchApi } from "./mockClient"
+import {
+  companyListSchema,
+  researchJobListSchema,
+  researchJobSchema,
+  startResearchResponseSchema,
+} from "./schemas"
 import { ApiError, type ResearchApi } from "./types"
 
 /**
@@ -52,14 +56,13 @@ export const httpResearchApi: ResearchApi = {
     return request(`/research/status?id=${encodeURIComponent(jobId)}`, researchJobSchema)
   },
 
-  // No history endpoint on n8n yet (Phase 2.1b). Until it exists, serve the
-  // labelled sample set; the response's `source: "sample"` drives the notice.
-  listCompanies() {
-    return mockResearchApi.listCompanies()
+  async listCompanies() {
+    const { records } = await request("/companies", companyListSchema)
+    return { records, source: "live" as const }
   },
 
-  // Same for the job log until a GET endpoint over research_jobs exists.
-  listResearchJobs() {
-    return mockResearchApi.listResearchJobs()
+  async listResearchJobs() {
+    const { jobs } = await request("/research/jobs", researchJobListSchema)
+    return { jobs, source: "live" as const }
   },
 }

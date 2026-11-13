@@ -1,5 +1,11 @@
 import { z } from "zod"
-import type { CustomerType, ResearchJob, StartResearchResponse } from "@/types/research"
+import type {
+  CompanyResearchRecord,
+  CustomerType,
+  ResearchJob,
+  ResearchJobSummary,
+  StartResearchResponse,
+} from "@/types/research"
 
 const CUSTOMER_TYPES = ["B2B", "B2C", "Enterprise"] as const satisfies readonly CustomerType[]
 
@@ -98,3 +104,37 @@ export const researchJobSchema = z.object({
   updated_at: z.string(),
   record: companyResearchRecord.nullable(),
 }) satisfies z.ZodType<ResearchJob>
+
+/**
+ * Lists validate item by item: one malformed row (e.g. research saved by an
+ * older workflow version) is skipped with a warning instead of failing the page.
+ */
+function lenientList<T>(schema: z.ZodType<T>, label: string) {
+  return z.array(z.unknown()).transform((items) =>
+    items.flatMap((item) => {
+      const parsed = schema.safeParse(item)
+      if (parsed.success) return [parsed.data]
+      console.warn(`Skipped malformed ${label}`, parsed.error.issues, item)
+      return []
+    }),
+  )
+}
+
+const researchJobSummary = z.object({
+  job_id: z.string().min(1),
+  status: z.enum(["running", "completed", "cached", "unreachable", "not_found", "failed"]),
+  input: z.string(),
+  domain: z.string().nullable(),
+  error: z.string().nullable(),
+  created_at: z.string(),
+}) satisfies z.ZodType<ResearchJobSummary>
+
+/** Reply to `GET /api/companies`. */
+export const companyListSchema = z.object({
+  records: lenientList<CompanyResearchRecord>(companyResearchRecord, "company record"),
+})
+
+/** Reply to `GET /api/research/jobs`. */
+export const researchJobListSchema = z.object({
+  jobs: lenientList<ResearchJobSummary>(researchJobSummary, "research job"),
+})

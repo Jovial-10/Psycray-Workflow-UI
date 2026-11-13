@@ -34,9 +34,9 @@ In mock mode, try `brightline-fabrication.example` or `LedgerLoop` (cached
 result), `unreachable.example` (unreachable) or any other name (not found).
 Add `VITE_MOCK_SCENARIO=empty` to preview the empty states.
 
-**Overview always uses sample data for now.** There is no n8n endpoint for
-research history yet, so even in live mode Overview shows the fictional set,
-with a "Sample data" notice.
+In live mode, Overview reads real research history from n8n
+(`GET /companies`, `GET /research/jobs`). In mock mode it shows the fictional
+set, with a "Sample data" notice.
 
 | Command           | What it does                                     |
 | ----------------- | ------------------------------------------------ |
@@ -142,7 +142,7 @@ Imports use the `@/` alias for `src/`, e.g. `import { api } from "@/services/api
 
 | Path         | Page             | Purpose (future phases)                             |
 | ------------ | ---------------- | --------------------------------------------------- |
-| `/`          | Overview         | **Built:** research bar, metrics, recent companies, activity (sample data) |
+| `/`          | Overview         | **Built:** research bar, metrics, recent companies, activity (live data) |
 | `/research`  | Company Research | **Live:** research a name or domain, view results   |
 | `/companies` | Saved Companies  | Browse every company in the research cache          |
 | `/briefs`    | Account Briefs   | Read sales-ready briefs for validated accounts      |

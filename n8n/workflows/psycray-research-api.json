@@ -2,24 +2,38 @@
   "name": "Psycray Research API",
   "nodes": [
     {
+      "id": "f729e5c1-6453-4192-a99a-4ab47c69bc5f",
+      "name": "Research Status Request",
+      "webhookId": "942fc121-1198-431a-b486-ba3ca04f8a37",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "position": [
+        0,
+        96
+      ],
       "parameters": {
-        "httpMethod": "GET",
         "path": "psycray/research/status",
         "authentication": "headerAuth",
         "responseMode": "responseNode",
         "options": {}
       },
-      "type": "n8n-nodes-base.webhook",
-      "typeVersion": 2,
-      "position": [
-        0,
-        0
-      ],
-      "name": "Research Status Request",
-      "webhookId": "5e3f145f-e06b-4c1f-8ba3-36dd4072bd6f",
-      "id": "9e52fce2-0147-493a-9db2-e3a0177c833e"
+      "credentials": {
+        "httpHeaderAuth": {
+          "id": "7RkLwKAkSSYctcRB",
+          "name": "X-Psycray-Key"
+        }
+      }
     },
     {
+      "id": "660254b0-bcbb-4a52-937d-deb1d06b3010",
+      "name": "Load Research Job",
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.7,
+      "alwaysOutputData": true,
+      "position": [
+        224,
+        96
+      ],
       "parameters": {
         "operation": "executeQuery",
         "query": "-- Job status, joined with the stored research once the job has finished.\n-- Jobs stuck in 'running' for over 10 minutes are reported as failed.\nSELECT\n  j.id::text AS job_id,\n  CASE\n    WHEN j.status = 'running' AND j.created_at < NOW() - INTERVAL '10 minutes' THEN 'failed'\n    ELSE j.status\n  END AS status,\n  CASE\n    WHEN j.status = 'running' AND j.created_at < NOW() - INTERVAL '10 minutes' THEN 'Research took too long and was stopped.'\n    ELSE j.error\n  END AS error,\n  j.input,\n  j.domain,\n  j.created_at,\n  j.updated_at,\n  CASE WHEN j.status IN ('completed', 'cached') THEN to_jsonb(cr) END AS record\nFROM research_jobs j\nLEFT JOIN company_research cr ON cr.domain = j.domain\nWHERE j.id::text = $1;",
@@ -27,23 +41,22 @@
           "queryReplacement": "={{ [ $json.query.id || '' ] }}"
         }
       },
-      "type": "n8n-nodes-base.postgres",
-      "typeVersion": 2.7,
-      "position": [
-        224,
-        0
-      ],
-      "name": "Load Research Job",
       "credentials": {
         "postgres": {
           "id": "V1HMewWXgQBIMFpN",
           "name": "Postgres account 6"
         }
-      },
-      "alwaysOutputData": true,
-      "id": "8b5fbdb3-173b-4e76-a23d-0b47c0539c77"
+      }
     },
     {
+      "id": "13a77bd9-bcfc-40f2-ae45-373c01780a22",
+      "name": "Was Job Found?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.3,
+      "position": [
+        448,
+        96
+      ],
       "parameters": {
         "conditions": {
           "options": {
@@ -54,7 +67,7 @@
           },
           "conditions": [
             {
-              "id": "5c71527b-0da0-4a32-a64a-c278bdfaa2c4",
+              "id": "9a051f1c-7c9c-42e5-b114-8c3b79bded0c",
               "leftValue": "={{ $json.job_id }}",
               "operator": {
                 "type": "string",
@@ -68,62 +81,62 @@
         },
         "looseTypeValidation": true,
         "options": {}
-      },
-      "type": "n8n-nodes-base.if",
-      "typeVersion": 2.3,
-      "position": [
-        448,
-        0
-      ],
-      "name": "Was Job Found?",
-      "id": "cd363210-d576-40da-a579-1da012ba6f1a"
+      }
     },
     {
+      "id": "c1cf2e6a-0c58-41be-93e7-9895456dc0e2",
+      "name": "Respond 200 Job",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.1,
+      "position": [
+        672,
+        0
+      ],
       "parameters": {
         "respondWith": "json",
         "responseBody": "={{ $json }}",
         "options": {
           "responseCode": 200
         }
-      },
+      }
+    },
+    {
+      "id": "0b0ce754-7f77-40a8-8d86-b23c5ff0f1c3",
+      "name": "Respond 404 Not Found",
       "type": "n8n-nodes-base.respondToWebhook",
       "typeVersion": 1.1,
       "position": [
         672,
-        -96
+        192
       ],
-      "name": "Respond 200 Job",
-      "id": "6d994def-d4f0-4a3b-bc74-51c49d0db924"
-    },
-    {
       "parameters": {
         "respondWith": "json",
         "responseBody": "={{ { error: 'Research job not found.' } }}",
         "options": {
           "responseCode": 404
         }
-      },
-      "type": "n8n-nodes-base.respondToWebhook",
-      "typeVersion": 1.1,
-      "position": [
-        672,
-        96
-      ],
-      "name": "Respond 404 Not Found",
-      "id": "ff5b5f9f-f25d-4f43-b93a-0751ca3d510d"
+      }
     },
     {
-      "parameters": {},
+      "id": "02dbe455-18ca-42b6-a010-81049a1c7066",
+      "name": "Research Agent Failed",
       "type": "n8n-nodes-base.errorTrigger",
       "typeVersion": 1,
       "position": [
         0,
-        352
+        416
       ],
-      "name": "Research Agent Failed",
-      "id": "276086a9-a52c-40d3-a16f-6f6b568d3896"
+      "parameters": {}
     },
     {
+      "id": "403900cc-100c-4cb0-ba69-08745b2aa73e",
+      "name": "Mark Job Failed",
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.7,
+      "position": [
+        224,
+        416
+      ],
       "parameters": {
         "operation": "executeQuery",
         "query": "UPDATE research_jobs\nSET status = 'failed',\n    error = $2,\n    updated_at = NOW()\nWHERE execution_id = $1\n  AND status = 'running';",
@@ -131,23 +144,136 @@
           "queryReplacement": "={{ [ String($json.execution?.id || ''), 'Research step failed: ' + ($json.execution?.lastNodeExecuted || 'unknown step') + '. ' + ($json.execution?.error?.message || '') ] }}"
         }
       },
-      "type": "n8n-nodes-base.postgres",
-      "typeVersion": 2.7,
-      "position": [
-        224,
-        352
-      ],
-      "name": "Mark Job Failed",
       "credentials": {
         "postgres": {
           "id": "V1HMewWXgQBIMFpN",
           "name": "Postgres account 6"
         }
+      }
+    },
+    {
+      "id": "dd37c848-201a-4cb0-805d-d4f01bb35df1",
+      "name": "List Companies Request",
+      "webhookId": "e2d3d678-78e5-4575-af75-1bcb00329386",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "position": [
+        0,
+        608
+      ],
+      "parameters": {
+        "path": "psycray/companies",
+        "authentication": "headerAuth",
+        "responseMode": "responseNode",
+        "options": {}
       },
-      "id": "9f4cadd5-dd26-4199-aa9b-3a7c022c7a0c"
+      "credentials": {
+        "httpHeaderAuth": {
+          "id": "7RkLwKAkSSYctcRB",
+          "name": "X-Psycray-Key"
+        }
+      }
+    },
+    {
+      "id": "50630e39-7c14-4c21-8dcf-a6609e082cbc",
+      "name": "Load Companies",
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.7,
+      "position": [
+        224,
+        608
+      ],
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "-- Saved research, newest first (Overview, Saved Companies).\n-- One row out: { records: [...] } so the webhook returns a single JSON object.\nSELECT COALESCE(json_agg(c ORDER BY c.updated_at DESC), '[]'::json) AS records\nFROM (\n  SELECT id, domain, status, updated_at, company_facts, research_signals,\n         synthesized_research, sources, icp_score, icp_tier, icp_breakdown, account_brief\n  FROM company_research\n  ORDER BY updated_at DESC\n  LIMIT 200\n) c;",
+        "options": {}
+      },
+      "credentials": {
+        "postgres": {
+          "id": "V1HMewWXgQBIMFpN",
+          "name": "Postgres account 6"
+        }
+      }
+    },
+    {
+      "id": "cb12a57a-6afa-4ba0-9503-a07c727ac62c",
+      "name": "Respond 200 Companies",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.1,
+      "position": [
+        448,
+        608
+      ],
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={{ { records: $json.records } }}",
+        "options": {
+          "responseCode": 200
+        }
+      }
+    },
+    {
+      "id": "73626e05-36ea-4f54-9cf2-95d987ba77d7",
+      "name": "List Research Jobs Request",
+      "webhookId": "5eb43af5-8f06-41e2-8bd9-10abd0ea45e5",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "position": [
+        0,
+        800
+      ],
+      "parameters": {
+        "path": "psycray/research/jobs",
+        "authentication": "headerAuth",
+        "responseMode": "responseNode",
+        "options": {}
+      },
+      "credentials": {
+        "httpHeaderAuth": {
+          "id": "7RkLwKAkSSYctcRB",
+          "name": "X-Psycray-Key"
+        }
+      }
+    },
+    {
+      "id": "d0a5b9ed-3771-40e8-b10d-30285a1d0b4e",
+      "name": "Load Research Jobs",
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.7,
+      "position": [
+        224,
+        800
+      ],
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "-- Recent research requests and outcomes (Overview activity log).\n-- Jobs stuck in 'running' for over 10 minutes are reported as failed, as in /research/status.\nSELECT COALESCE(json_agg(j ORDER BY j.created_at DESC), '[]'::json) AS jobs\nFROM (\n  SELECT\n    id::text AS job_id,\n    CASE WHEN status = 'running' AND created_at < NOW() - INTERVAL '10 minutes' THEN 'failed' ELSE status END AS status,\n    input,\n    domain,\n    CASE WHEN status = 'running' AND created_at < NOW() - INTERVAL '10 minutes'\n         THEN 'Research took too long and was stopped.' ELSE error END AS error,\n    created_at\n  FROM research_jobs\n  ORDER BY created_at DESC\n  LIMIT 50\n) j;",
+        "options": {}
+      },
+      "credentials": {
+        "postgres": {
+          "id": "V1HMewWXgQBIMFpN",
+          "name": "Postgres account 6"
+        }
+      }
+    },
+    {
+      "id": "2ee60eaa-12b8-4229-8386-4d34af72fdfd",
+      "name": "Respond 200 Jobs",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.1,
+      "position": [
+        448,
+        800
+      ],
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={{ { jobs: $json.jobs } }}",
+        "options": {
+          "responseCode": 200
+        }
+      }
     }
   ],
-  "pinData": {},
   "connections": {
     "Research Status Request": {
       "main": [
@@ -199,11 +325,56 @@
           }
         ]
       ]
+    },
+    "List Companies Request": {
+      "main": [
+        [
+          {
+            "node": "Load Companies",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Load Companies": {
+      "main": [
+        [
+          {
+            "node": "Respond 200 Companies",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "List Research Jobs Request": {
+      "main": [
+        [
+          {
+            "node": "Load Research Jobs",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Load Research Jobs": {
+      "main": [
+        [
+          {
+            "node": "Respond 200 Jobs",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
     }
   },
-  "active": false,
   "settings": {
-    "executionOrder": "v1"
+    "executionOrder": "v1",
+    "binaryMode": "separate",
+    "availableInMCP": true
   },
-  "tags": []
+  "active": false
 }
