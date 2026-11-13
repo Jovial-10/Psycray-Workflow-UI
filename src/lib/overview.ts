@@ -1,4 +1,7 @@
-import type { CompanyResearchRecord, IcpTier, ResearchJobStatus, ResearchJobSummary } from "@/types/research"
+import type { CompanyResearchRecord, ResearchJobStatus, ResearchJobSummary } from "@/types/research"
+import { toCompanyRow, type CompanyRow } from "./companies"
+
+export type { CompanyRow }
 
 /** "Recently researched" window (user decision: last 7 days). */
 export const RECENT_DAYS = 7
@@ -40,32 +43,9 @@ export function summarize(records: CompanyResearchRecord[], now = Date.now()): O
   }
 }
 
-export interface CompanyRow {
-  domain: string
-  name: string
-  industry: string | null
-  score: number | null
-  tier: IcpTier | null
-  researchedAt: string
-}
-
 /** Validated companies, newest first, flattened for the table. */
 export function recentCompanies(records: CompanyResearchRecord[], limit = 8): CompanyRow[] {
-  return records
-    .filter(isValidated)
-    .sort(newestFirst)
-    .slice(0, limit)
-    .map((r) => {
-      const facts = r.company_facts && !("raw" in r.company_facts) ? r.company_facts : null
-      return {
-        domain: r.domain,
-        name: r.synthesized_research?.company_name || facts?.company_name || r.domain,
-        industry: facts?.target_industries[0] ?? null,
-        score: r.icp_score,
-        tier: r.icp_tier,
-        researchedAt: r.updated_at,
-      }
-    })
+  return records.filter(isValidated).sort(newestFirst).slice(0, limit).map(toCompanyRow)
 }
 
 export interface ActivityEvent {

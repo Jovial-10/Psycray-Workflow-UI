@@ -40,6 +40,11 @@ export type CustomerType = "B2B" | "B2C" | "Enterprise"
 
 export interface CompanyFacts {
   company_name: string | null
+  /**
+   * The company's own primary industry (e.g. "Semiconductors").
+   * Added 2026-11-13; null for research saved before then.
+   */
+  industry: string | null
   value_proposition: string | null
   products_and_services: string[]
   target_industries: string[]

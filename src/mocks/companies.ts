@@ -64,6 +64,8 @@ interface MockCompany {
   id: number
   name: string
   domain: string
+  /** The company's own industry. */
+  industry: string
   daysAgo: number
   summary: string
   industries: string[]
@@ -88,6 +90,7 @@ function company(c: MockCompany): CompanyResearchRecord {
     updated_at: ago(c.daysAgo),
     company_facts: {
       company_name: c.name,
+      industry: c.industry,
       value_proposition: c.summary,
       products_and_services: c.products,
       target_industries: c.industries,
@@ -137,6 +140,7 @@ export const mockCompanies: CompanyResearchRecord[] = [
     updated_at: ago(0.2),
     company_facts: {
       company_name: "Brightline Fabrication",
+      industry: "Metal fabrication",
       value_proposition:
         "Precision sheet-metal fabrication and assembly for OEMs with short lead times.",
       products_and_services: ["Laser cutting", "CNC bending", "Powder coating", "Kitting"],
@@ -223,6 +227,7 @@ Potential Psycray Service Opportunities
     updated_at: ago(1.1),
     company_facts: {
       company_name: "LedgerLoop",
+      industry: "Financial software",
       value_proposition: "Accounts-payable automation for regional credit unions.",
       products_and_services: ["AP automation platform", "Vendor onboarding"],
       target_industries: ["Financial services"],
@@ -284,6 +289,7 @@ SaaS platform automating accounts payable for credit unions. A new core-banking 
   company({
     id: 4,
     name: "Cobalt Ridge Software",
+    industry: "Field-service software",
     domain: "cobaltridge.example",
     daysAgo: 0.08,
     summary: "Field-service scheduling SaaS for HVAC contractors; recently raised a Series A and is hiring integration engineers.",
@@ -296,6 +302,7 @@ SaaS platform automating accounts payable for credit unions. A new core-banking 
   company({
     id: 5,
     name: "Northgate Logistics",
+    industry: "Third-party logistics",
     domain: "northgate-logistics.example",
     daysAgo: 3.2,
     summary: "Regional 3PL running warehouse intake on spreadsheets and email; customer portal requests mentioned on site.",
@@ -308,6 +315,7 @@ SaaS platform automating accounts payable for credit unions. A new core-banking 
   company({
     id: 6,
     name: "Saltmarsh Creative",
+    industry: "Creative agency",
     domain: "saltmarsh.example",
     daysAgo: 2.1,
     summary: "Brand and web agency adding a development practice; partnering with a headless CMS vendor.",
@@ -320,6 +328,7 @@ SaaS platform automating accounts payable for credit unions. A new core-banking 
   company({
     id: 7,
     name: "Pinecrest Dental Group",
+    industry: "Dental care",
     domain: "pinecrestdental.example",
     daysAgo: 4.5,
     summary: "Multi-location dental practice opening two new offices this year.",
@@ -332,6 +341,7 @@ SaaS platform automating accounts payable for credit unions. A new core-banking 
   company({
     id: 8,
     name: "Quarry Lane Outfitters",
+    industry: "Outdoor retail",
     domain: "quarrylane.example",
     daysAgo: 5.7,
     summary: "Outdoor gear retailer with a small wholesale program.",
@@ -344,6 +354,7 @@ SaaS platform automating accounts payable for credit unions. A new core-banking 
   company({
     id: 10,
     name: "Meridian Valve & Supply",
+    industry: "Industrial distribution",
     domain: "meridianvalve.example",
     daysAgo: 9.4,
     summary: "Industrial valve distributor whose distributor ordering still runs through fax and PDF forms.",
@@ -356,6 +367,7 @@ SaaS platform automating accounts payable for credit unions. A new core-banking 
   company({
     id: 11,
     name: "Tallgrass Analytics",
+    industry: "Agricultural analytics software",
     domain: "tallgrass.example",
     daysAgo: 12.2,
     summary: "Agronomy analytics SaaS that needs integrations with farm-equipment telemetry platforms.",
@@ -368,6 +380,7 @@ SaaS platform automating accounts payable for credit unions. A new core-banking 
   company({
     id: 12,
     name: "Ironwood Packaging",
+    industry: "Packaging manufacturing",
     domain: "ironwoodpack.example",
     daysAgo: 15.6,
     summary: "Corrugated packaging manufacturer with a modern ERP and an in-house IT team.",
@@ -380,6 +393,7 @@ SaaS platform automating accounts payable for credit unions. A new core-banking 
   company({
     id: 13,
     name: "Fieldstone Credit Union",
+    industry: "Credit union",
     domain: "fieldstonecu.example",
     daysAgo: 20.3,
     summary: "Community credit union with core-banking vendor tooling and no visible custom software needs.",
@@ -392,6 +406,7 @@ SaaS platform automating accounts payable for credit unions. A new core-banking 
   company({
     id: 14,
     name: "Copperline Robotics",
+    industry: "Industrial robotics",
     domain: "copperline.example",
     daysAgo: 26.8,
     summary: "Builds palletizing robots and software; expanding into Mexico and hiring for systems integration.",

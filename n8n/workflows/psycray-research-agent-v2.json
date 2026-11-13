@@ -2,6 +2,16 @@
   "name": "Psycray Research Agent v2",
   "nodes": [
     {
+      "id": "ba440e8e-7c00-409f-bf26-ad64ba464d71",
+      "name": "Check HTTP Error",
+      "notesInFlow": false,
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.5,
+      "onError": "continueErrorOutput",
+      "position": [
+        8640,
+        640
+      ],
       "parameters": {
         "url": "={{ $json.candidate_url }}",
         "sendHeaders": true,
@@ -28,19 +38,17 @@
             }
           }
         }
-      },
-      "type": "n8n-nodes-base.httpRequest",
-      "typeVersion": 4.5,
-      "position": [
-        1940,
-        -32
-      ],
-      "id": "377037c7-689c-4072-88e0-22c087b08812",
-      "name": "Check HTTP Error",
-      "notesInFlow": false,
-      "onError": "continueErrorOutput"
+      }
     },
     {
+      "id": "9182d81d-5a5c-4889-bf42-5c63c8ea1dc4",
+      "name": "Return Cached Research",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.5,
+      "position": [
+        8640,
+        368
+      ],
       "parameters": {
         "assignments": {
           "assignments": [
@@ -107,30 +115,30 @@
           ]
         },
         "options": {}
-      },
-      "type": "n8n-nodes-base.set",
-      "typeVersion": 3.5,
-      "position": [
-        1988,
-        -224
-      ],
-      "id": "4cc7a74a-3cab-45dc-af54-c3abfef495db",
-      "name": "Return Cached Research"
+      }
     },
     {
-      "parameters": {
-        "jsCode": "const item = $input.first().json;\n\n// Retrieve raw HTML from the upstream Check HTTP Error node\nconst rawHtml = item.data || '';\n\nfunction cleanHtmlToText(html) {\n  if (!html || typeof html !== 'string') return '';\n  return html\n    .replace(/<script\\b[^<]*(?:(?!<\\/script>)<[^<]*)*<\\/script>/gi, ' ')\n    .replace(/<style\\b[^<]*(?:(?!<\\/style>)<[^<]*)*<\\/style>/gi, ' ')\n    .replace(/<svg\\b[^<]*(?:(?!<\\/svg>)<[^<]*)*<\\/svg>/gi, ' ')\n    .replace(/<noscript\\b[^<]*(?:(?!<\\/noscript>)<[^<]*)*<\\/noscript>/gi, ' ')\n    .replace(/<[^>]+>/g, ' ')\n    .replace(/&nbsp;/g, ' ')\n    .replace(/&amp;/g, '&')\n    .replace(/&quot;/g, '\"')\n    .replace(/\\s+/g, ' ')\n    .trim()\n    .slice(0, 12000); // Truncate to avoid context window overflow\n}\n\nconst plainText = cleanHtmlToText(rawHtml);\n\n// Resolve domain and canonical URL using valid JavaScript OR (||)\n// Resolve plain text from whatever input fed this node\nconst domain = item.domain || item.candidate_domain || '';\nconst url = item.candidate_url || item.url || (domain ? `https://${domain}` : '');\n\nreturn [{\n  json: {\n    domain: domain,\n    url: url,\n    website_text: plainText\n  }\n}];"
-      },
+      "id": "c57a22b6-0a8e-4dad-a72c-eccec14b94b8",
+      "name": "Extract First-Party Text",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
       "position": [
-        2164,
-        -112
+        9088,
+        512
       ],
-      "id": "fddf73c1-b1fa-47ba-a76b-be55a20df346",
-      "name": "Extract First-Party Text"
+      "parameters": {
+        "jsCode": "const item = $input.first().json;\n\n// Retrieve raw HTML from the upstream Check HTTP Error node\nconst rawHtml = item.data || '';\n\nfunction cleanHtmlToText(html) {\n  if (!html || typeof html !== 'string') return '';\n  return html\n    .replace(/<script\\b[^<]*(?:(?!<\\/script>)<[^<]*)*<\\/script>/gi, ' ')\n    .replace(/<style\\b[^<]*(?:(?!<\\/style>)<[^<]*)*<\\/style>/gi, ' ')\n    .replace(/<svg\\b[^<]*(?:(?!<\\/svg>)<[^<]*)*<\\/svg>/gi, ' ')\n    .replace(/<noscript\\b[^<]*(?:(?!<\\/noscript>)<[^<]*)*<\\/noscript>/gi, ' ')\n    .replace(/<[^>]+>/g, ' ')\n    .replace(/&nbsp;/g, ' ')\n    .replace(/&amp;/g, '&')\n    .replace(/&quot;/g, '\"')\n    .replace(/\\s+/g, ' ')\n    .trim()\n    .slice(0, 12000); // Truncate to avoid context window overflow\n}\n\nconst plainText = cleanHtmlToText(rawHtml);\n\n// Resolve domain and canonical URL using valid JavaScript OR (||)\n// Resolve plain text from whatever input fed this node\nconst domain = item.domain || item.candidate_domain || '';\nconst url = item.candidate_url || item.url || (domain ? `https://${domain}` : '');\n\nreturn [{\n  json: {\n    domain: domain,\n    url: url,\n    website_text: plainText\n  }\n}];"
+      }
     },
     {
+      "id": "de18cb33-6f4b-485b-ae0c-0207797b7b8f",
+      "name": "Extract Core Company Facts",
+      "type": "@n8n/n8n-nodes-langchain.openAi",
+      "typeVersion": 2.3,
+      "position": [
+        9312,
+        512
+      ],
       "parameters": {
         "modelId": {
           "__rl": true,
@@ -141,21 +149,13 @@
         "responses": {
           "values": [
             {
-              "content": "=You are a corporate intelligence analyst. Extract basic company facts strictly based on the provided website text. Do NOT hallucinate or make facts up. If a detail cannot be found in the text, use null or []. Return valid JSON only.\n\nWebsite URL: {{ $json.url }}\nDomain: {{ $json.domain }}\n\nWebsite Content:\n{{ $json.website_text }}\n\nExtract and return a JSON object matching this schema:\n{\n  \"company_name\": \"string or null\",\n  \"value_proposition\": \"string or null\",\n  \"products_and_services\": [\"string\"],\n  \"target_industries\": [\"string\"],\n  \"customer_types\": [\"B2B\", \"B2C\", or \"Enterprise\"],\n  \"headquarters_locations\": [\"string\"],\n  \"detected_technologies\": [\"string\"]\n}"
+              "content": "=You are a corporate intelligence analyst. Extract basic company facts strictly based on the provided website text. Do NOT hallucinate or make facts up. If a detail cannot be found in the text, use null or []. Return valid JSON only.\n\nField meanings:\n- \"industry\": the company's OWN primary industry or sector (what the company is, e.g. \"Semiconductors\", \"Project management software\", \"Industrial fabrication\"). Short noun phrase.\n- \"target_industries\": the industries the company SELLS TO or serves. Do not copy these into \"industry\".\n\nWebsite URL: {{ $json.url }}\nDomain: {{ $json.domain }}\n\nWebsite Content:\n{{ $json.website_text }}\n\nExtract and return a JSON object matching this schema:\n{\n  \"company_name\": \"string or null\",\n  \"industry\": \"string or null\",\n  \"value_proposition\": \"string or null\",\n  \"products_and_services\": [\"string\"],\n  \"target_industries\": [\"string\"],\n  \"customer_types\": [\"B2B\", \"B2C\", or \"Enterprise\"],\n  \"headquarters_locations\": [\"string\"],\n  \"detected_technologies\": [\"string\"]\n}"
             }
           ]
         },
         "builtInTools": {},
         "options": {}
       },
-      "type": "@n8n/n8n-nodes-langchain.openAi",
-      "typeVersion": 2.3,
-      "position": [
-        2308,
-        -112
-      ],
-      "id": "f49456ce-91ef-4d5b-b746-4456510884f4",
-      "name": "Extract Core Company Facts",
       "credentials": {
         "openAiApi": {
           "id": "n8qdsBDCx0imgUuP",
@@ -164,6 +164,14 @@
       }
     },
     {
+      "id": "ff8c5ccb-2bcb-48dc-9f16-383014a991cd",
+      "name": "Synthesize Intelligence & Evidence",
+      "type": "@n8n/n8n-nodes-langchain.openAi",
+      "typeVersion": 2.3,
+      "position": [
+        10112,
+        512
+      ],
       "parameters": {
         "modelId": {
           "__rl": true,
@@ -181,14 +189,6 @@
         "builtInTools": {},
         "options": {}
       },
-      "type": "@n8n/n8n-nodes-langchain.openAi",
-      "typeVersion": 2.3,
-      "position": [
-        2900,
-        -112
-      ],
-      "id": "935e41bf-866d-46b4-9fd6-d3708154821d",
-      "name": "Synthesize Intelligence & Evidence",
       "credentials": {
         "openAiApi": {
           "id": "n8qdsBDCx0imgUuP",
@@ -197,6 +197,14 @@
       }
     },
     {
+      "id": "b5d204ac-5817-4a4c-88a5-8db7450a2f7c",
+      "name": "Return Unreachable Response",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.5,
+      "position": [
+        9376,
+        736
+      ],
       "parameters": {
         "assignments": {
           "assignments": [
@@ -221,30 +229,30 @@
           ]
         },
         "options": {}
-      },
-      "type": "n8n-nodes-base.set",
-      "typeVersion": 3.5,
-      "position": [
-        2372,
-        64
-      ],
-      "id": "07502510-6696-40cf-88d2-098ab7c1bcb2",
-      "name": "Return Unreachable Response"
+      }
     },
     {
-      "parameters": {
-        "jsCode": "// Input arrives from the Research Request webhook (validated upstream)\nconst rawInput = $('Validate Request').first().json.input.trim();\n\n// Domain detection regex / check\nconst isDomain = /^([a-zA-Z0-9-]+\\.)+[a-zA-Z]{2,}(\\/.*)?$/.test(rawInput) || rawInput.startsWith('http');\n\nif (isDomain) {\n  let cleanDomain = rawInput.replace(/^https?:\\/\\//i, '').replace(/^www\\./i, '').split('/')[0].toLowerCase();\n  return {\n    json: {\n      input_type: 'domain',\n      raw_input: rawInput,\n      candidate_domain: cleanDomain,\n      candidate_url: `https://${cleanDomain}`\n    }\n  };\n} else {\n  return {\n    json: {\n      input_type: 'name',\n      raw_input: rawInput,\n      company_name: rawInput\n    }\n  };\n}"
-      },
+      "id": "8009f927-17ad-4547-9b14-fdca106d87dc",
+      "name": "Normalize Input",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
       "position": [
-        964,
-        0
+        7072,
+        640
       ],
-      "id": "36e412bd-81c8-401d-b19c-6fd3da342d88",
-      "name": "Normalize Input"
+      "parameters": {
+        "jsCode": "// Input arrives from the Research Request webhook (validated upstream)\nconst rawInput = $('Validate Request').first().json.input.trim();\n\n// Domain detection regex / check\nconst isDomain = /^([a-zA-Z0-9-]+\\.)+[a-zA-Z]{2,}(\\/.*)?$/.test(rawInput) || rawInput.startsWith('http');\n\nif (isDomain) {\n  let cleanDomain = rawInput.replace(/^https?:\\/\\//i, '').replace(/^www\\./i, '').split('/')[0].toLowerCase();\n  return {\n    json: {\n      input_type: 'domain',\n      raw_input: rawInput,\n      candidate_domain: cleanDomain,\n      candidate_url: `https://${cleanDomain}`\n    }\n  };\n} else {\n  return {\n    json: {\n      input_type: 'name',\n      raw_input: rawInput,\n      company_name: rawInput\n    }\n  };\n}"
+      }
     },
     {
+      "id": "a460e97a-719f-4716-94f1-625aa0e63a18",
+      "name": "Is Domain Input?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.3,
+      "position": [
+        7296,
+        640
+      ],
       "parameters": {
         "conditions": {
           "options": {
@@ -267,31 +275,31 @@
           "combinator": "and"
         },
         "options": {}
-      },
-      "type": "n8n-nodes-base.if",
-      "typeVersion": 2.3,
-      "position": [
-        1124,
-        0
-      ],
-      "id": "908e8a9e-3e98-464c-9538-bd5b740ce00d",
-      "name": "Is Domain Input?"
+      }
     },
     {
-      "parameters": {
-        "jsCode": "const items = $input.all();\nconst query = $('Normalize Input').first().json.company_name?.toLowerCase().trim() || '';\n\n// High-profile non-company domains to reject\nconst ignoredDomains = [\n  'linkedin.com', 'twitter.com', 'x.com', 'facebook.com', 'instagram.com',\n  'crunchbase.com', 'bloomberg.com', 'wikipedia.org', 'pitchbook.com',\n  'glassdoor.com', 'indeed.com', 'youtube.com', 'zoominfo.com'\n];\n\n// Hostname without \"www.\" (regex, so it does not depend on the URL global)\nfunction extractDomain(inputUrl) {\n  const match = String(inputUrl || '').trim().match(/^(?:https?:\\/\\/)?([^\\/?#:\\s]+)/i);\n  return match ? match[1].toLowerCase().replace(/^www\\./, '') : '';\n}\n\nconst candidates = [];\n\nfor (const item of items) {\n  const url = item.json.url || '';\n  const title = (item.json.title || '').toLowerCase();\n  const hostname = /^https?:\\/\\//i.test(url) ? extractDomain(url) : '';\n  if (!hostname) continue;\n\n  // Filter out social, directory, and media platforms\n  if (ignoredDomains.some(d => hostname === d || hostname.endsWith('.' + d))) continue;\n\n  let score = 0;\n  const cleanName = query.replace(/[^a-z0-9]/g, '');\n  const cleanHost = hostname.split('.')[0].replace(/[^a-z0-9]/g, '');\n\n  if (cleanHost === cleanName) score += 50;\n  else if (cleanHost.includes(cleanName) || cleanName.includes(cleanHost)) score += 30;\n  if (title.includes(query)) score += 25;\n\n  candidates.push({\n    domain: hostname,\n    url: url,\n    title: item.json.title,\n    score: score\n  });\n}\n\ncandidates.sort((a, b) => b.score - a.score);\n\n// Fallback to the top candidate directly without a hard cutoff\nif (candidates.length > 0 && (candidates[0].domain || candidates[0].url)) {\n  const topMatch = candidates[0];\n  const domain = extractDomain(topMatch.domain || topMatch.url);\n  return [{\n    json: {\n      status: 'resolved',\n      candidate_domain: domain,\n      candidate_url: topMatch.url?.startsWith('http') ? topMatch.url : `https://${domain}`,\n      confidence: topMatch.score || 0\n    }\n  }];\n}\n\n// No usable website among the search results\nreturn [{\n  json: {\n    status: 'not_found',\n    candidate_domain: '',\n    candidate_url: '',\n    confidence: 0\n  }\n}];"
-      },
+      "id": "9b0948f1-28ad-4a31-b4e6-c908943eccd9",
+      "name": "Rank Website Candidates",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
+      "alwaysOutputData": false,
       "position": [
-        1460,
-        16
+        7744,
+        704
       ],
-      "id": "4a5e6b27-9b71-4439-aedb-89e692fd1db8",
-      "name": "Rank Website Candidates",
-      "alwaysOutputData": false
+      "parameters": {
+        "jsCode": "const items = $input.all();\nconst query = $('Normalize Input').first().json.company_name?.toLowerCase().trim() || '';\n\n// High-profile non-company domains to reject\nconst ignoredDomains = [\n  'linkedin.com', 'twitter.com', 'x.com', 'facebook.com', 'instagram.com',\n  'crunchbase.com', 'bloomberg.com', 'wikipedia.org', 'pitchbook.com',\n  'glassdoor.com', 'indeed.com', 'youtube.com', 'zoominfo.com'\n];\n\n// Hostname without \"www.\" (regex, so it does not depend on the URL global)\nfunction extractDomain(inputUrl) {\n  const match = String(inputUrl || '').trim().match(/^(?:https?:\\/\\/)?([^\\/?#:\\s]+)/i);\n  return match ? match[1].toLowerCase().replace(/^www\\./, '') : '';\n}\n\nconst candidates = [];\n\nfor (const item of items) {\n  const url = item.json.url || '';\n  const title = (item.json.title || '').toLowerCase();\n  const hostname = /^https?:\\/\\//i.test(url) ? extractDomain(url) : '';\n  if (!hostname) continue;\n\n  // Filter out social, directory, and media platforms\n  if (ignoredDomains.some(d => hostname === d || hostname.endsWith('.' + d))) continue;\n\n  let score = 0;\n  const cleanName = query.replace(/[^a-z0-9]/g, '');\n  const cleanHost = hostname.split('.')[0].replace(/[^a-z0-9]/g, '');\n\n  if (cleanHost === cleanName) score += 50;\n  else if (cleanHost.includes(cleanName) || cleanName.includes(cleanHost)) score += 30;\n  if (title.includes(query)) score += 25;\n\n  candidates.push({\n    domain: hostname,\n    url: url,\n    title: item.json.title,\n    score: score\n  });\n}\n\ncandidates.sort((a, b) => b.score - a.score);\n\n// Fallback to the top candidate directly without a hard cutoff\nif (candidates.length > 0 && (candidates[0].domain || candidates[0].url)) {\n  const topMatch = candidates[0];\n  const domain = extractDomain(topMatch.domain || topMatch.url);\n  return [{\n    json: {\n      status: 'resolved',\n      candidate_domain: domain,\n      candidate_url: topMatch.url?.startsWith('http') ? topMatch.url : `https://${domain}`,\n      confidence: topMatch.score || 0\n    }\n  }];\n}\n\n// No usable website among the search results\nreturn [{\n  json: {\n    status: 'not_found',\n    candidate_domain: '',\n    candidate_url: '',\n    confidence: 0\n  }\n}];"
+      }
     },
     {
+      "id": "71a08f67-3889-42b2-9859-3a942bce2bbe",
+      "name": "Find Growth Signals",
+      "type": "n8n-nodes-exa-official.exa",
+      "typeVersion": 2,
+      "position": [
+        9664,
+        512
+      ],
       "parameters": {
         "query": "={{ (() => {\n  let name = '';\n  try {\n    const raw = $json.output?.[0]?.content?.[0]?.text || '';\n    const parsed = JSON.parse(raw.replace(/```json\\n?|```/g, '').trim());\n    name = parsed.company_name;\n  } catch(e) {}\n  \n  const target = name \n    || $('Rank Website Candidates').first()?.json?.candidate_domain \n    || $('Is Domain Input?').first()?.json?.company_name \n    || $('Normalize Input').first()?.json?.candidate_domain;\n\n  return `\"${target}\" news expansion acquisition hiring technology`;\n})() }}",
         "numResults": 5,
@@ -301,14 +309,6 @@
         },
         "options": {}
       },
-      "type": "n8n-nodes-exa-official.exa",
-      "typeVersion": 2,
-      "position": [
-        2580,
-        -112
-      ],
-      "id": "ede4f0a6-603a-438b-9b4d-7c7bf71abee0",
-      "name": "Find Growth Signals",
       "credentials": {
         "exaApi": {
           "id": "2OkuzJv22GuIrvuP",
@@ -317,6 +317,15 @@
       }
     },
     {
+      "id": "2ef69ec4-511a-4ffa-8729-024b7f55f22a",
+      "name": "Search for Official Website",
+      "type": "n8n-nodes-exa-official.exa",
+      "typeVersion": 2,
+      "alwaysOutputData": true,
+      "position": [
+        7520,
+        704
+      ],
       "parameters": {
         "query": "=Official homepage of {{ $json.company_name }}",
         "numResults": 8,
@@ -325,23 +334,22 @@
           "excludeDomains": "github.com, linkedin.com, twitter.com, x.com, facebook.com, instagram.com, crunchbase.com, exa.ai, youtube.com"
         }
       },
-      "type": "n8n-nodes-exa-official.exa",
-      "typeVersion": 2,
-      "position": [
-        1300,
-        64
-      ],
-      "id": "773958a1-f92e-4368-b0d2-1bdd6f11e541",
-      "name": "Search for Official Website",
       "credentials": {
         "exaApi": {
           "id": "2OkuzJv22GuIrvuP",
           "name": "Exa account"
         }
-      },
-      "alwaysOutputData": true
+      }
     },
     {
+      "id": "6884a267-c34f-4b54-9bfa-0b8b29a9d35d",
+      "name": "Is Domain Cached?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.3,
+      "position": [
+        8416,
+        544
+      ],
       "parameters": {
         "conditions": {
           "options": {
@@ -366,17 +374,18 @@
         },
         "looseTypeValidation": true,
         "options": {}
-      },
-      "type": "n8n-nodes-base.if",
-      "typeVersion": 2.3,
-      "position": [
-        1764,
-        -144
-      ],
-      "id": "268986fa-e39f-47bb-a282-47c3eb62f4bf",
-      "name": "Is Domain Cached?"
+      }
     },
     {
+      "id": "b432f12d-27b3-4c34-8fce-8437bc07ee4c",
+      "name": "Load Fresh Research by Domain",
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.7,
+      "alwaysOutputData": true,
+      "position": [
+        8192,
+        544
+      ],
       "parameters": {
         "operation": "executeQuery",
         "query": "-- check domain cache\n\nSELECT \n  $1::text AS candidate_domain,\n  $2::text AS candidate_url,\n  cr.id AS cache_id,\n  cr.domain,\n  cr.status AS cache_status,\n  cr.updated_at AS cache_updated_at,\n  cr.company_facts,\n  cr.research_signals,\n  cr.synthesized_research,\n  cr.sources,\n  cr.icp_score,\n  cr.icp_tier,\n  cr.account_brief\nFROM (SELECT 1) AS input\nLEFT JOIN company_research cr \n  ON cr.domain = $1 \n AND cr.status = 'validated' \n AND cr.updated_at > NOW() - INTERVAL '30 days'\n AND NOT $3::boolean;  -- refresh=true skips the cache",
@@ -384,15 +393,6 @@
           "queryReplacement": "={{ [ $json.candidate_domain, $json.candidate_url, $('Validate Request').first().json.refresh ] }}"
         }
       },
-      "type": "n8n-nodes-base.postgres",
-      "typeVersion": 2.7,
-      "position": [
-        1604,
-        -96
-      ],
-      "id": "6c884897-e075-473c-8d88-7ef056c696f1",
-      "name": "Load Fresh Research by Domain",
-      "alwaysOutputData": true,
       "credentials": {
         "postgres": {
           "id": "V1HMewWXgQBIMFpN",
@@ -401,6 +401,14 @@
       }
     },
     {
+      "id": "b9bb880e-ca2e-4823-90a7-5849f95964aa",
+      "name": "Add Company Research ",
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.7,
+      "position": [
+        11040,
+        512
+      ],
       "parameters": {
         "operation": "upsert",
         "schema": {
@@ -559,14 +567,6 @@
         },
         "options": {}
       },
-      "type": "n8n-nodes-base.postgres",
-      "typeVersion": 2.7,
-      "position": [
-        3604,
-        -112
-      ],
-      "id": "397a44cf-5fb6-426d-9064-00bcdbf9d401",
-      "name": "Add Company Research ",
       "credentials": {
         "postgres": {
           "id": "V1HMewWXgQBIMFpN",
@@ -575,6 +575,14 @@
       }
     },
     {
+      "id": "dc91dae1-a6e1-4f27-8a73-aafccbffea9c",
+      "name": "Store Unreachable Domain",
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.7,
+      "position": [
+        9088,
+        736
+      ],
       "parameters": {
         "operation": "executeQuery",
         "query": "INSERT INTO company_research (domain, status, updated_at)\nVALUES ($1, $2, NOW())\nON CONFLICT (domain)\nDO UPDATE SET\n  status = EXCLUDED.status,\n  updated_at = EXCLUDED.updated_at;",
@@ -582,14 +590,6 @@
           "queryReplacement": "={{ [\n  ($('Rank Website Candidates').isExecuted ? $('Rank Website Candidates').first()?.json?.candidate_domain : null) ||\n  $('Normalize Input').first()?.json?.candidate_domain ||\n  $('Normalize Input').first()?.json?.raw_input,\n  \"error/unreachable\"\n] }}"
         }
       },
-      "type": "n8n-nodes-base.postgres",
-      "typeVersion": 2.7,
-      "position": [
-        2148,
-        64
-      ],
-      "id": "60640d80-89d0-4016-89b1-554fdda98ba3",
-      "name": "Store Unreachable Domain",
       "credentials": {
         "postgres": {
           "id": "V1HMewWXgQBIMFpN",
@@ -598,32 +598,40 @@
       }
     },
     {
+      "id": "aaabbf26-f0f2-4351-b68c-61994690f40c",
+      "name": "Format Exa Evidence",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        9888,
+        512
+      ],
       "parameters": {
         "jsCode": "// Example of how to structure the Exa results array for your LLM prompt\nconst exaResults = $('Find Growth Signals').all().map(item => {\n  return `\n- Title: ${item.json.title || 'N/A'}\n  URL: ${item.json.url || 'N/A'}\n  Published Date: ${item.json.publishedDate || 'Unknown'}\n  Summary: ${item.json.summary || item.json.text || 'No summary available.'}\n  `;\n}).join('\\n');\n\nreturn [{\n  json: {\n    ...$json,\n    formatted_exa_evidence: exaResults\n  }\n}];"
-      },
+      }
+    },
+    {
+      "id": "4ef860dc-c5ae-4237-b37c-e831903e6a0e",
+      "name": "ICP Scoring Logic",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
       "position": [
-        2756,
-        -112
+        10464,
+        512
       ],
-      "id": "1e252b8e-514d-4990-b48e-23a23ad3226e",
-      "name": "Format Exa Evidence"
-    },
-    {
       "parameters": {
         "jsCode": "const raw = $('Synthesize Intelligence & Evidence').first().json.output?.[0]?.content?.[0]?.text || '';\n\nlet synthesis = {};\ntry {\n  const cleaned = raw.replace(/```json\\s?|```/g, '').trim();\n  const jsonStart = cleaned.indexOf('{');\n  const jsonEnd = cleaned.lastIndexOf('}');\n  synthesis = JSON.parse(cleaned.substring(jsonStart, jsonEnd + 1));\n} catch (error) {\n  return [{\n    json: {\n      ...$json,\n      icp_score: null,\n      icp_tier: 'Needs Review',\n      scoring_rationale: ['Research synthesis was not valid JSON'],\n      icp_breakdown: [],\n      parsed_synthesis: null\n    }\n  }];\n}\n\nconst summary = String(synthesis.summary || '').toLowerCase();\nconst facts = JSON.stringify(synthesis.confirmed_facts || []).toLowerCase();\nconst combinedText = summary + ' ' + facts;\n\n// With no summary and no confirmed facts we cannot judge any criterion:\n// mark them \"unknown\" rather than \"not met\".\nconst hasEvidence = summary.trim().length > 0 || (synthesis.confirmed_facts || []).length > 0;\n\nconst breakdown = [];\nfunction criterion(name, max, score, reasonMet, reasonNotMet) {\n  const status = !hasEvidence ? 'unknown' : score > 0 ? 'met' : 'not_met';\n  breakdown.push({\n    criterion: name,\n    score: hasEvidence ? score : 0,\n    max,\n    status,\n    reason: status === 'unknown' ? 'Not enough research evidence to evaluate' : (score > 0 ? reasonMet : reasonNotMet)\n  });\n}\n\nbreakdown.push({ criterion: 'Baseline', score: 20, max: 20, status: 'met', reason: 'Starting score for every researched company' });\n\n// 1. Industry fit (up to +35)\nif (/saas|software|technology/i.test(combinedText)) {\n  criterion('Industry Fit', 35, 35, 'Core vertical: SaaS/Technology', '');\n} else if (/manufacturing|industrial|supplier|logistics/i.test(combinedText)) {\n  criterion('Industry Fit', 35, 30, 'Target vertical: Manufacturing/Industrial/Logistics', '');\n} else {\n  criterion('Industry Fit', 35, 0, '', 'Not in a core or target vertical');\n}\n\n// 2. Digital opportunity (up to +25)\nconst workflowNeed = /workflow|automation|portal|integration|custom software/i.test(combinedText);\ncriterion('Digital Opportunity', 25, workflowNeed ? 25 : 0,\n  'Workflow, automation, portal or integration need found',\n  'No workflow or integration need found');\n\n// 3. Growth signals (up to +20)\nconst growth = /growth|expanding|hiring|partnership|funding|acquisition/i.test(combinedText);\ncriterion('Growth Signals', 20, growth ? 20 : 0,\n  'Growth, hiring, funding or partnership signals found',\n  'No growth signals found');\n\nconst score = Math.min(Math.max(breakdown.reduce((sum, c) => sum + c.score, 0), 0), 100);\n\nlet tier = 'Low Fit';\nif (score >= 80) {\n  tier = 'High Fit';\n} else if (score >= 55) {\n  tier = 'Moderate Fit';\n}\n\nreturn [{\n  json: {\n    ...$json,\n    icp_score: score,\n    icp_tier: tier,\n    scoring_rationale: breakdown.filter(c => c.criterion !== 'Baseline').map(c => `${c.criterion}: ${c.reason} (+${c.score})`),\n    icp_breakdown: breakdown,\n    parsed_synthesis: synthesis\n  }\n}];"
-      },
-      "type": "n8n-nodes-base.code",
-      "typeVersion": 2,
-      "position": [
-        3172,
-        -112
-      ],
-      "id": "b231c30c-9180-44ab-95d8-1117ff5b5243",
-      "name": "ICP Scoring Logic"
+      }
     },
     {
+      "id": "d63a54af-2346-44d6-b289-f09d4e77178d",
+      "name": "Generate Account Brief",
+      "type": "@n8n/n8n-nodes-langchain.openAi",
+      "typeVersion": 2.3,
+      "position": [
+        10688,
+        512
+      ],
       "parameters": {
         "modelId": {
           "__rl": true,
@@ -641,14 +649,6 @@
         "builtInTools": {},
         "options": {}
       },
-      "type": "@n8n/n8n-nodes-langchain.openAi",
-      "typeVersion": 2.3,
-      "position": [
-        3316,
-        -112
-      ],
-      "id": "384f9185-c651-44fd-8f07-5bed2b47a382",
-      "name": "Generate Account Brief",
       "credentials": {
         "openAiApi": {
           "id": "n8qdsBDCx0imgUuP",
@@ -657,6 +657,15 @@
       }
     },
     {
+      "id": "0855143b-6bdc-4d6e-9eff-97546a0d2f3b",
+      "name": "Research Request",
+      "webhookId": "23487daa-a8c6-4ad4-8a83-a8a0935c5170",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "position": [
+        5728,
+        736
+      ],
       "parameters": {
         "httpMethod": "POST",
         "path": "psycray/research",
@@ -664,30 +673,35 @@
         "responseMode": "responseNode",
         "options": {}
       },
-      "type": "n8n-nodes-base.webhook",
-      "typeVersion": 2,
-      "position": [
-        -224,
-        0
-      ],
-      "name": "Research Request",
-      "webhookId": "23487daa-a8c6-4ad4-8a83-a8a0935c5170",
-      "id": "d24ef883-43b6-4d35-a737-d8146dc5a3e4"
+      "credentials": {
+        "httpHeaderAuth": {
+          "id": "7RkLwKAkSSYctcRB",
+          "name": "X-Psycray-Key"
+        }
+      }
     },
     {
-      "parameters": {
-        "jsCode": "// Validate the frontend request body: { input: string, refresh?: boolean }\nconst body = $input.first().json.body || {};\nconst input = typeof body.input === 'string' ? body.input.trim() : '';\nconst refresh = body.refresh === true;\n\nif (input.length < 2 || input.length > 200) {\n  return [{ json: { valid: false, error: 'Enter a company name or website domain (2-200 characters).' } }];\n}\n\n// Normalized key used to detect duplicate submissions\nconst input_key = input\n  .toLowerCase()\n  .replace(/^https?:\\/\\//, '')\n  .replace(/^www\\./, '')\n  .replace(/\\/+$/, '');\n\nreturn [{ json: { valid: true, input, refresh, input_key } }];"
-      },
+      "id": "34d4c1f2-054e-41c7-aada-e907779a0ef6",
+      "name": "Validate Request",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
       "position": [
-        -16,
-        0
+        5952,
+        736
       ],
-      "name": "Validate Request",
-      "id": "2cdfbe34-6f1f-4b19-8ea0-5fb7c6b23ffb"
+      "parameters": {
+        "jsCode": "// Validate the frontend request body: { input: string, refresh?: boolean }\nconst body = $input.first().json.body || {};\nconst input = typeof body.input === 'string' ? body.input.trim() : '';\nconst refresh = body.refresh === true;\n\nif (input.length < 2 || input.length > 200) {\n  return [{ json: { valid: false, error: 'Enter a company name or website domain (2-200 characters).' } }];\n}\n\n// Normalized key used to detect duplicate submissions\nconst input_key = input\n  .toLowerCase()\n  .replace(/^https?:\\/\\//, '')\n  .replace(/^www\\./, '')\n  .replace(/\\/+$/, '');\n\nreturn [{ json: { valid: true, input, refresh, input_key } }];"
+      }
     },
     {
+      "id": "9434b3af-1749-43ee-89f5-d7cca84dae44",
+      "name": "Is Request Valid?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.3,
+      "position": [
+        6176,
+        736
+      ],
       "parameters": {
         "conditions": {
           "options": {
@@ -712,34 +726,34 @@
         },
         "looseTypeValidation": true,
         "options": {}
-      },
-      "type": "n8n-nodes-base.if",
-      "typeVersion": 2.3,
-      "position": [
-        176,
-        0
-      ],
-      "name": "Is Request Valid?",
-      "id": "cc300fe3-8488-43fa-a692-50fabfb6f24c"
+      }
     },
     {
+      "id": "26ed6126-a240-4d48-b12f-f2e405e0fdc1",
+      "name": "Respond 400 Invalid",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.1,
+      "position": [
+        6400,
+        832
+      ],
       "parameters": {
         "respondWith": "json",
         "responseBody": "={{ { error: $json.error } }}",
         "options": {
           "responseCode": 400
         }
-      },
-      "type": "n8n-nodes-base.respondToWebhook",
-      "typeVersion": 1.1,
-      "position": [
-        400,
-        160
-      ],
-      "name": "Respond 400 Invalid",
-      "id": "8be5895c-dfac-454f-b4d9-126717199774"
+      }
     },
     {
+      "id": "1d211265-e114-4474-a76f-8612f304804b",
+      "name": "Create Research Job",
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.7,
+      "position": [
+        6400,
+        640
+      ],
       "parameters": {
         "operation": "executeQuery",
         "query": "-- Reuse a job that is still running for the same input (duplicate submission)\nWITH existing AS (\n  SELECT id\n  FROM research_jobs\n  WHERE input_key = $1\n    AND status = 'running'\n    AND created_at > NOW() - INTERVAL '10 minutes'\n  ORDER BY created_at DESC\n  LIMIT 1\n), inserted AS (\n  INSERT INTO research_jobs (input_key, input, refresh, execution_id, status)\n  SELECT $1, $2, $3::boolean, $4, 'running'\n  WHERE NOT EXISTS (SELECT 1 FROM existing)\n  RETURNING id\n)\nSELECT id, false AS duplicate FROM inserted\nUNION ALL\nSELECT id, true AS duplicate FROM existing;",
@@ -747,39 +761,39 @@
           "queryReplacement": "={{ [ $json.input_key, $json.input, $json.refresh, $execution.id ] }}"
         }
       },
-      "type": "n8n-nodes-base.postgres",
-      "typeVersion": 2.7,
-      "position": [
-        400,
-        -16
-      ],
-      "name": "Create Research Job",
       "credentials": {
         "postgres": {
           "id": "V1HMewWXgQBIMFpN",
           "name": "Postgres account 6"
         }
-      },
-      "id": "2e75d694-75fd-435e-94ce-017aee014aa5"
+      }
     },
     {
+      "id": "9b999edc-8f05-4c72-8770-f106c0d03cfc",
+      "name": "Respond 202 Accepted",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.1,
+      "position": [
+        6624,
+        640
+      ],
       "parameters": {
         "respondWith": "json",
         "responseBody": "={{ { job_id: $json.id, duplicate: $json.duplicate } }}",
         "options": {
           "responseCode": 202
         }
-      },
-      "type": "n8n-nodes-base.respondToWebhook",
-      "typeVersion": 1.1,
-      "position": [
-        608,
-        -16
-      ],
-      "name": "Respond 202 Accepted",
-      "id": "acfa5902-fbe8-4413-954f-a3eff38644f6"
+      }
     },
     {
+      "id": "05ea63ea-3383-4ed4-bc87-8da28d68fb69",
+      "name": "Is New Job?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.3,
+      "position": [
+        6848,
+        640
+      ],
       "parameters": {
         "conditions": {
           "options": {
@@ -804,17 +818,17 @@
         },
         "looseTypeValidation": true,
         "options": {}
-      },
+      }
+    },
+    {
+      "id": "c1641b0d-a78e-424e-b0f5-e663a5073394",
+      "name": "Was Website Found?",
       "type": "n8n-nodes-base.if",
       "typeVersion": 2.3,
       "position": [
-        800,
-        -16
+        7968,
+        704
       ],
-      "name": "Is New Job?",
-      "id": "a506721b-1d78-4f21-9f34-c5e51d1b2c22"
-    },
-    {
       "parameters": {
         "conditions": {
           "options": {
@@ -838,17 +852,17 @@
         },
         "looseTypeValidation": true,
         "options": {}
-      },
-      "type": "n8n-nodes-base.if",
-      "typeVersion": 2.3,
-      "position": [
-        1620,
-        16
-      ],
-      "name": "Was Website Found?",
-      "id": "19d4ce61-5c72-451e-be21-e0544fd97a07"
+      }
     },
     {
+      "id": "24d0f580-14eb-40f0-83a3-f88ab9fbc642",
+      "name": "Job: Not Found",
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.7,
+      "position": [
+        8192,
+        752
+      ],
       "parameters": {
         "operation": "executeQuery",
         "query": "UPDATE research_jobs\nSET status = $2,\n    domain = NULLIF($3::text, ''),\n    error = NULLIF($4::text, ''),\n    updated_at = NOW()\nWHERE id = $1::uuid;",
@@ -856,22 +870,22 @@
           "queryReplacement": "={{ [ $('Create Research Job').first().json.id, 'not_found', '', 'No official website could be identified for this company.' ] }}"
         }
       },
-      "type": "n8n-nodes-base.postgres",
-      "typeVersion": 2.7,
-      "position": [
-        1860,
-        208
-      ],
-      "name": "Job: Not Found",
       "credentials": {
         "postgres": {
           "id": "V1HMewWXgQBIMFpN",
           "name": "Postgres account 6"
         }
-      },
-      "id": "9782b49a-cd3f-4386-8256-185ed39649b6"
+      }
     },
     {
+      "id": "54acd3d6-4b66-4ef1-9450-bf15554e0f05",
+      "name": "Job: Cached",
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.7,
+      "position": [
+        8864,
+        368
+      ],
       "parameters": {
         "operation": "executeQuery",
         "query": "UPDATE research_jobs\nSET status = $2,\n    domain = NULLIF($3::text, ''),\n    error = NULLIF($4::text, ''),\n    updated_at = NOW()\nWHERE id = $1::uuid;",
@@ -879,22 +893,22 @@
           "queryReplacement": "={{ [ $('Create Research Job').first().json.id, 'cached', $('Load Fresh Research by Domain').first()?.json?.candidate_domain || '', '' ] }}"
         }
       },
-      "type": "n8n-nodes-base.postgres",
-      "typeVersion": 2.7,
-      "position": [
-        2196,
-        -224
-      ],
-      "name": "Job: Cached",
       "credentials": {
         "postgres": {
           "id": "V1HMewWXgQBIMFpN",
           "name": "Postgres account 6"
         }
-      },
-      "id": "bbccdbe9-519c-4df8-b98d-ea3f141809ed"
+      }
     },
     {
+      "id": "a52213dc-7394-4d88-91c3-ee9a01afd20e",
+      "name": "Is Website OK?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.3,
+      "position": [
+        8864,
+        560
+      ],
       "parameters": {
         "conditions": {
           "options": {
@@ -919,17 +933,17 @@
         },
         "looseTypeValidation": true,
         "options": {}
-      },
-      "type": "n8n-nodes-base.if",
-      "typeVersion": 2.3,
-      "position": [
-        2052,
-        -144
-      ],
-      "name": "Is Website OK?",
-      "id": "11478e45-efff-4e5e-9181-36d905a5116b"
+      }
     },
     {
+      "id": "aa969b97-6246-422f-bd33-0ca48cff5e01",
+      "name": "Job: Unreachable",
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.7,
+      "position": [
+        9664,
+        736
+      ],
       "parameters": {
         "operation": "executeQuery",
         "query": "UPDATE research_jobs\nSET status = $2,\n    domain = NULLIF($3::text, ''),\n    error = NULLIF($4::text, ''),\n    updated_at = NOW()\nWHERE id = $1::uuid;",
@@ -937,22 +951,22 @@
           "queryReplacement": "={{ [ $('Create Research Job').first().json.id, 'unreachable', $('Load Fresh Research by Domain').first()?.json?.candidate_domain || '', 'Company website could not be reached or returned an error.' ] }}"
         }
       },
-      "type": "n8n-nodes-base.postgres",
-      "typeVersion": 2.7,
-      "position": [
-        2580,
-        64
-      ],
-      "name": "Job: Unreachable",
       "credentials": {
         "postgres": {
           "id": "V1HMewWXgQBIMFpN",
           "name": "Postgres account 6"
         }
-      },
-      "id": "f9bd7409-8276-4aa5-9959-9eeac7c74f2f"
+      }
     },
     {
+      "id": "8b5e8c0c-7eb6-4daf-a310-26c1eba8523b",
+      "name": "Job: Completed",
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.7,
+      "position": [
+        11264,
+        512
+      ],
       "parameters": {
         "operation": "executeQuery",
         "query": "UPDATE research_jobs\nSET status = $2,\n    domain = NULLIF($3::text, ''),\n    error = NULLIF($4::text, ''),\n    updated_at = NOW()\nWHERE id = $1::uuid;",
@@ -960,23 +974,14 @@
           "queryReplacement": "={{ [ $('Create Research Job').first().json.id, 'completed', $('Load Fresh Research by Domain').first()?.json?.candidate_domain || '', '' ] }}"
         }
       },
-      "type": "n8n-nodes-base.postgres",
-      "typeVersion": 2.7,
-      "position": [
-        3812,
-        -112
-      ],
-      "name": "Job: Completed",
       "credentials": {
         "postgres": {
           "id": "V1HMewWXgQBIMFpN",
           "name": "Postgres account 6"
         }
-      },
-      "id": "e911daa3-80ba-4622-89ce-51a8b67de43e"
+      }
     }
   ],
-  "pinData": {},
   "connections": {
     "Check HTTP Error": {
       "main": [
@@ -1307,11 +1312,13 @@
       ]
     }
   },
-  "active": false,
   "settings": {
     "executionOrder": "v1",
     "binaryMode": "separate",
-    "availableInMCP": true
+    "availableInMCP": true,
+    "timeSavedMode": "fixed",
+    "errorWorkflow": "oRmS31cJqbOcTmQ4",
+    "callerPolicy": "workflowsFromSameOwner"
   },
-  "tags": []
+  "active": false
 }

@@ -13,7 +13,7 @@ Major changes and decisions, plus what comes next. Newest entries first.
 | --- | --- |
 | **Phase** | 2.1: frontend and research dashboard |
 | **State** | ✅ **Phase 2.1a done.** All 5 cases pass end to end on real n8n |
-| **Next** | Saved Companies page on the new history endpoint (Phase 2.1b) |
+| **Next** | Account Briefs page, then evidence and brief structure (Phase 2.1b) |
 | **Design** | Design system and app shell done (zinc + deep indigo, Geist, light/dark). See [DESIGN.md](../DESIGN.md) |
 | **Data source** | Live n8n via `/api` (`VITE_API_MODE=mock` for mock data) |
 
@@ -43,10 +43,12 @@ Major changes and decisions, plus what comes next. Newest entries first.
 ### Phase 2.1b: rest of the dashboard
 
 - [x] Research history endpoints `GET /companies` and `GET /research/jobs` added to the live API workflow. **Overview now shows real data**
-- [ ] Saved Companies page (searchable list, open saved research without re-running, Refresh)
-- [ ] `GET /companies/:domain`, only if a page needs a single record (the list already returns full rows)
-- [ ] Industry column: the workflow only extracts the industries a company *serves*, so NVIDIA shows "Automotive" (see log)
-- [ ] Open a past Account Brief from history without re-running research
+- [x] Saved Companies page: search, fit-tier filter, sort (in the URL), unreachable domains with Try again
+- [x] Company page `/companies/:domain`: saved research without re-running (0 research calls, verified), plus Refresh
+- [x] Industry: the workflow now extracts the company's own `industry`. The UI shows Industry and Serves separately
+- [ ] Refresh older companies to fill in Industry (it shows "—" until then)
+- [ ] `GET /companies/:domain`, only if the list grows past 200 rows (the company page finds its row in the list)
+- [ ] Account Briefs page: browse and open past briefs
 - [ ] Structured brief: confirmed facts vs inferences, signals with dates, source per claim
 - [ ] Access control before public hosting. **Deferred** (you'll decide later)
 - [ ] Deploy to the Psycray VPS (nginx config in [INTEGRATION.md](INTEGRATION.md#production-vps)). **Waiting** on VPS details from you
@@ -73,6 +75,42 @@ Major changes and decisions, plus what comes next. Newest entries first.
 ---
 
 ## Log
+
+### 2026-11-13 · Industry field + Saved Companies (Phase 2.1b)
+
+**Industry (n8n change, with your go-ahead).** *Extract Core Company Facts*
+in the live Agent v2 now also returns `industry`, the company's own sector,
+kept separate from `target_industries` (who it sells to). Backup:
+`n8n/workflows/backups/psycray-research-agent-v2.2026-11-13.json`. Repo copy
+re-exported. Verified with a refresh of nvidia.com (23 s):
+`industry: "Artificial Intelligence Computing"`. The table reads `industry`
+(older rows show "—" until refreshed), and the company profile shows
+**Industry** and **Serves** separately.
+
+**Saved Companies** (your choices: own page per company · search, tier filter,
+sort · unreachable listed with Try again):
+
+- `/companies`: a count summary, a search box, tier chips with counts, and a
+  sort select. Filters live in the URL (shareable; Back restores them). The
+  table is shared with Overview: whole rows link to the company, with a
+  chevron, and unreachable rows show "Try again". Columns respond to the
+  table's width.
+- `/companies/:domain`: the saved result, read from the database. Opening a
+  company made **0 research calls** (verified). Refresh goes to
+  `/research?q=…&refresh=1`. Not-found and unreachable companies get their own
+  states.
+- Fixes found on real data: a `<div>`-in-`<p>` nesting warning; unreachable
+  domains wrapping mid-name; an AI lead-in ("Sure, here's the Account Brief
+  for NVIDIA:") now dropped from briefs.
+- `ResearchResult` takes a `saved` flag instead of a research job, so the
+  company page reuses it.
+
+**Review:** the independent finish review returned *fix* with three findings:
+the table scrolled sideways inside its card at 1024–1440px once real industry
+values arrived, the back link dropped the list's filters, and the tier chips
+showed false "0" counts while loading. All three were fixed and verified (table
+scroll 0px at seven widths from 390 to 1600px; the back link returns to the
+exact filtered list or to Overview). Final verdict: *ship*.
 
 ### 2026-11-13 · Research history connected (Phase 2.1b, step 1)
 

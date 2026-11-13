@@ -24,8 +24,10 @@ export function BriefText({ text }: { text: string }) {
     list = []
   }
 
-  for (const rawLine of text.split("\n")) {
+  for (const [i, rawLine] of text.split("\n").entries()) {
     const line = rawLine.trim()
+    // Drop a conversational lead-in such as "Sure, here's the Account Brief for X:"
+    if (i === 0 && /^(sure|certainly|of course|here(?:'|’)?s|here is)\b.*:$/i.test(line)) continue
     // The page already shows the company name; skip the brief's own title line
     if (/^#*\s*\**account brief:/i.test(line)) continue
     if (!line) {

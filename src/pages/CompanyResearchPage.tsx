@@ -12,6 +12,7 @@ export function CompanyResearchPage() {
   const lastRequest = useRef<ResearchRequest | null>(null)
   const [params] = useSearchParams()
   const handoff = params.get("q")?.trim() ?? ""
+  const handoffRefresh = params.get("refresh") === "1"
   const startedHandoff = useRef<string | null>(null)
 
   const { start } = research
@@ -27,9 +28,9 @@ export function CompanyResearchPage() {
   useEffect(() => {
     if (handoff.length >= 2 && startedHandoff.current !== handoff) {
       startedHandoff.current = handoff
-      run({ input: handoff })
+      run({ input: handoff, refresh: handoffRefresh })
     }
-  }, [handoff, run])
+  }, [handoff, handoffRefresh, run])
 
   const { job } = research
   const record = research.phase === "done" ? job?.record : null
@@ -47,7 +48,7 @@ export function CompanyResearchPage() {
 
       {job && record && (
         <ResearchResult
-          job={job}
+          saved={job.status === "cached"}
           record={record}
           refreshing={research.isBusy}
           onRefresh={() => run({ input: record.domain, refresh: true })}

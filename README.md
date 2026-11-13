@@ -77,6 +77,7 @@ src/
 │   └── router.tsx            # Route table (createBrowserRouter)
 ├── components/
 │   ├── common/               # Shared app components (EmptyState)
+│   ├── companies/            # CompaniesTable (shared with Overview), toolbar
 │   ├── layout/               # App shell: AppLayout, AppSidebar, AppHeader
 │   ├── overview/             # Research bar, metric cards, companies table, activity log
 │   ├── research/             # Research form, status, results, FitBadge, skeleton
@@ -85,11 +86,13 @@ src/
 ├── config/
 │   └── navigation.ts         # Sidebar links: one source of truth
 ├── hooks/
+│   ├── useCompanies.ts       # Saved research list (Saved Companies, company page)
 │   ├── useOverviewData.ts    # Companies + research-job log for Overview
 │   ├── useResearchJob.ts     # Start a job, poll until it finishes
 │   ├── useTheme.ts           # Read / set the theme preference
 │   └── use-mobile.ts         # Below-md breakpoint (sidebar drawer)
 ├── lib/
+│   ├── companies.ts          # Company rows, search/filter/sort, company paths
 │   ├── overview.ts           # Overview metrics, table rows, activity (derived, never hardcoded)
 │   ├── theme.ts              # Theme types, storage key, context
 │   └── utils.ts              # cn() class-name helper
@@ -144,7 +147,8 @@ Imports use the `@/` alias for `src/`, e.g. `import { api } from "@/services/api
 | ------------ | ---------------- | --------------------------------------------------- |
 | `/`          | Overview         | **Built:** research bar, metrics, recent companies, activity (live data) |
 | `/research`  | Company Research | **Live:** research a name or domain, view results   |
-| `/companies` | Saved Companies  | Browse every company in the research cache          |
+| `/companies` | Saved Companies  | **Built:** search, fit-tier filter, sort; unreachable domains with Try again |
+| `/companies/:domain` | Company  | **Built:** a company's saved research (no re-run), with Refresh |
 | `/briefs`    | Account Briefs   | Read sales-ready briefs for validated accounts      |
 | `/settings`  | Settings         | Backend connection and scoring reference            |
 | `*`          | Not Found        | Fallback for unknown URLs                           |

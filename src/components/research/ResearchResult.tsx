@@ -8,19 +8,19 @@ import type {
   CompanyResearchRecord,
   IcpCriterionScore,
   IcpTier,
-  ResearchJob,
 } from "@/types/research"
 import { BriefText } from "./BriefText"
 import { FitBadge } from "./FitBadge"
 
 interface ResearchResultProps {
-  job: ResearchJob
+  /** True when showing previously saved research rather than a fresh run. */
+  saved: boolean
   record: CompanyResearchRecord
   onRefresh: () => void
   refreshing: boolean
 }
 
-export function ResearchResult({ job, record, onRefresh, refreshing }: ResearchResultProps) {
+export function ResearchResult({ saved, record, onRefresh, refreshing }: ResearchResultProps) {
   const facts = isParsedFacts(record.company_facts) ? record.company_facts : null
   const synthesis = record.synthesized_research
   const name = synthesis?.company_name || facts?.company_name || record.domain
@@ -40,7 +40,7 @@ export function ResearchResult({ job, record, onRefresh, refreshing }: ResearchR
             {record.domain} <ExternalLink className="size-3" />
           </a>
           <p className="mt-1 text-xs text-muted-foreground">
-            {job.status === "cached" ? "Saved research from " : "Researched "}
+            {saved ? "Saved research from " : "Researched "}
             {formatDate(record.updated_at)}
           </p>
         </div>
@@ -87,7 +87,8 @@ function CompanyProfile({
 }) {
   const description = summary || facts?.value_proposition
   const rows: [string, string[]][] = [
-    ["Industries", facts?.target_industries ?? []],
+    ["Industry", facts?.industry ? [facts.industry] : []],
+    ["Serves", facts?.target_industries ?? []],
     ["Products & services", facts?.products_and_services ?? []],
     ["Customers", facts?.customer_types ?? []],
     ["Headquarters", facts?.headquarters_locations ?? []],

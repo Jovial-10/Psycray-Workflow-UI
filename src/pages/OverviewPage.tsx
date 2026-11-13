@@ -4,7 +4,7 @@ import { Link } from "react-router"
 import { EmptyState } from "@/components/common/EmptyState"
 import { ActivityFeed, ActivitySkeleton } from "@/components/overview/ActivityFeed"
 import { MetricCard, MetricCardSkeleton } from "@/components/overview/MetricCard"
-import { RecentCompaniesSkeleton, RecentCompaniesTable } from "@/components/overview/RecentCompaniesTable"
+import { CompaniesTable, CompaniesTableSkeleton } from "@/components/companies/CompaniesTable"
 import { ResearchBar } from "@/components/overview/ResearchBar"
 import { Button } from "@/components/ui/button"
 import { useOverviewData, type OverviewData } from "@/hooks/useOverviewData"
@@ -101,7 +101,7 @@ function Dashboard({ data: { records, jobs } }: { data: OverviewData }) {
             }
           >
             {rows.length ? (
-              <RecentCompaniesTable rows={rows} />
+              <CompaniesTable rows={rows} />
             ) : (
               <p className="px-4 py-6 text-sm text-muted-foreground">No company has finished research yet.</p>
             )}
@@ -157,7 +157,7 @@ function OverviewSkeleton() {
       </div>
       <div className="space-y-6">
         <Panel title="Recent companies">
-          <RecentCompaniesSkeleton />
+          <CompaniesTableSkeleton />
         </Panel>
         <Panel title="Recent activity">
           <ActivitySkeleton />

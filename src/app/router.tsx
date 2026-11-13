@@ -1,6 +1,7 @@
 import { createBrowserRouter } from "react-router"
 import { AppLayout } from "@/components/layout/AppLayout"
 import { AccountBriefsPage } from "@/pages/AccountBriefsPage"
+import { CompanyDetailPage } from "@/pages/CompanyDetailPage"
 import { CompanyResearchPage } from "@/pages/CompanyResearchPage"
 import { NotFoundPage } from "@/pages/NotFoundPage"
 import { OverviewPage } from "@/pages/OverviewPage"
@@ -15,6 +16,7 @@ export const router = createBrowserRouter([
       { index: true, element: <OverviewPage /> },
       { path: "research", element: <CompanyResearchPage /> },
       { path: "companies", element: <SavedCompaniesPage /> },
+      { path: "companies/:domain", element: <CompanyDetailPage /> },
       { path: "briefs", element: <AccountBriefsPage /> },
       { path: "settings", element: <SettingsPage /> },
       { path: "*", element: <NotFoundPage /> },

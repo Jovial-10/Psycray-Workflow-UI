@@ -24,6 +24,8 @@ const icpTier = z.enum(["High Fit", "Moderate Fit", "Low Fit", "Needs Review"])
 const companyFacts = z.union([
   z.object({
     company_name: str,
+    // Older rows predate this field
+    industry: str.optional().transform((v) => v ?? null),
     value_proposition: str,
     products_and_services: strList,
     target_industries: strList,
