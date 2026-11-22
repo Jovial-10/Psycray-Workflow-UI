@@ -25,6 +25,10 @@ n8n webhooks (Header Auth)
                                         GET   /companies         → saved research (history)
                                         GET   /research/jobs     → recent requests (activity)
                                         POST  /research/rescore  → re-score saved evidence
+                                        GET   /icp/config        → published ICP versions
+                                        POST  /icp/config        → publish a version (admin)
+                                        POST  /icp/rescore       → rescore saved companies (admin)
+                                        GET   /icp/admin, /icp/history
                                         Error Trigger            → marks job failed
    ▼
 Neon Postgres                           company_research · research_jobs
@@ -132,6 +136,24 @@ the differences between the two scores (criterion points, statuses, evidence
 items, versions), never written by the LLM. Every score is also appended to
 `icp_score_history` ([002](../n8n/sql/002_icp_score_history.sql)).
 
+### ICP configuration (`Psycray ICP API` workflow)
+
+| Method | Path | Auth | Purpose |
+| --- | --- | --- | --- |
+| `GET` | `/icp/config` | app key | `{ profile, versions[] }`, newest first; `profile.active_version_id` is applied everywhere |
+| `GET` | `/icp/admin` | admin key | `{ name }` or 401 |
+| `POST` | `/icp/config` | admin key | `{ config, base_version_id, note }` → 201 `{ version }`; 400 invalid (`details[]`), 409 stale base, 401 |
+| `POST` | `/icp/rescore` | admin key | Rescore every saved company with the active version → `{ rescored, unchanged, up_to_date, needs_refresh[], changes[] }` |
+| `GET` | `/icp/history?domain=` | app key | Score history entries, newest first |
+
+**Admin keys.** Named keys in `icp_admins` (SHA-256 only); the browser sends
+`X-Psycray-Admin`, which the proxy passes through unchanged (nginx forwards
+request headers by default). The server validates every config
+(`validateConfig`) and assigns the version label; client-supplied labels are
+ignored. Published versions are immutable (DB trigger). To add an admin:
+`INSERT INTO icp_admins (name, key_hash) VALUES ('Name', encode(sha256(convert_to('<key>', 'UTF8')), 'hex'));`
+To revoke: set `revoked_at = now()`.
+
 The frontend checks every response with zod (`src/services/api/schemas.ts`).
 Fields the LLM wrote are parsed leniently: a malformed value falls back to
 empty instead of failing the whole result. The list endpoints validate row by
@@ -147,7 +169,7 @@ Agent** workflow is not modified. v2 is imported as a separate workflow.
 
 | # | Step | Where |
 | - | ---- | ----- |
-| 1 | Run [`n8n/sql/001_research_jobs.sql`](../n8n/sql/001_research_jobs.sql) and [`002_icp_score_history.sql`](../n8n/sql/002_icp_score_history.sql) | Neon SQL editor |
+| 1 | Run [`n8n/sql/001_research_jobs.sql`](../n8n/sql/001_research_jobs.sql) [`002_icp_score_history.sql`](../n8n/sql/002_icp_score_history.sql) and [`003_icp_profiles.sql`](../n8n/sql/003_icp_profiles.sql) | Neon SQL editor |
 | 2 | Create a **Header Auth** credential: name `X-Psycray-Key`, value a long random secret (e.g. `openssl rand -hex 32`) | n8n → Credentials |
 | 3 | Import [`psycray-research-api.json`](../n8n/workflows/psycray-research-api.json) | n8n → Import from File |
 | 4 | Import [`psycray-research-agent-v2.json`](../n8n/workflows/psycray-research-agent-v2.json) | n8n → Import from File |

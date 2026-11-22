@@ -13,7 +13,7 @@ Major changes and decisions, plus what comes next. Newest entries first.
 | --- | --- |
 | **Phase** | 2.1: frontend and research dashboard |
 | **State** | ✅ **Phase 2.1a done.** All 5 cases pass end to end on real n8n |
-| **Next** | **Deploy deterministic ICP scoring** (built and tested, waiting on your go-ahead), then Account Briefs |
+| **Next** | First real ICP publish (verifies the publish + bulk-rescore SQL on live), refresh the 19 legacy rows, then Account Briefs |
 | **Design** | Design system and app shell done (zinc + deep indigo, Geist, light/dark). See [DESIGN.md](../DESIGN.md) |
 | **Data source** | Live n8n via `/api` (`VITE_API_MODE=mock` for mock data) |
 
@@ -38,8 +38,8 @@ Major changes and decisions, plus what comes next. Newest entries first.
 - [x] Re-imported Agent v2 → **company name ✅** ("Zapier" → zapier.com, fresh with `refresh: true`)
 - [x] Scoring inconsistency diagnosed and fixed in code: deterministic engine, 41 regression tests (see log 2026-11-21)
 - [x] Growth signals from same-name companies are excluded (`about_target` + retrieved-URL check)
-- [ ] **Deploy scoring:** run migration 002, deploy Agent v2 + Research API (`node scripts/deploy-n8n.ts agent api`). Needs your go-ahead
-- [ ] After deploy: refresh Basecamp twice and recalculate once to verify on live data; refresh older rows to move them off the legacy keyword scores
+- [x] Deterministic scoring deployed; live check: two Basecamp refreshes gave identical scores (48)
+- [ ] Refresh the 19 legacy rows once so they get scoring evidence (they can't be previewed or recalculated until then)
 - [x] Real run times measured (23–25 s fresh); the 90 s "taking longer than usual" threshold stays
 
 ### Phase 2.1b: rest of the dashboard
@@ -57,7 +57,7 @@ Major changes and decisions, plus what comes next. Newest entries first.
 
 ### Later
 
-- [ ] Phase 2.2: configurable ICP (criteria, weights, hard requirements). Engine already takes an `IcpConfig` and records its version; recalculation endpoint exists
+- [x] Phase 2.2: ICP Studio (`/icp`): weights, baseline, criteria, hard requirements, versions, preview, recalculation (log 2026-11-22)
 - [ ] Phase 2.3: historical win/loss analysis (optional)
 
 ---
@@ -77,6 +77,16 @@ Major changes and decisions, plus what comes next. Newest entries first.
 ---
 
 ## Log
+
+### 2026-11-22 · Phase 2.2: ICP Studio (configurable scoring)
+
+- **Engine v3** (`src/lib/scoring/icpEngine.ts`, still the only scoring code): `score = baseline + (100 − baseline) × weightedFit`, never above 100; unknown criteria give a supported score plus `max_possible`; hard requirements (location, B2B, min employees, min revenue) are pass / fail / unknown and separate from the score (`qualification`); `validateConfig`, `normalizeConfig`, `describeConfigChanges`. Score changes are tagged **configuration** vs **evidence** with points attributed to each (they always add up to the delta). With baseline 0 and the default config, v3 reproduces every v2 score (Basecamp stays 48 on live)
+- **Neon** (migration 003, additive): `icp_profiles`, `icp_config_versions` (immutable via trigger; version 1 = the config existing scores used, same label), `icp_admins` (SHA-256 of named keys), `icp_score_history.config_version_id`. Existing 23 research rows and history untouched
+- **n8n:** new *Psycray ICP API* workflow (`gGaWTj8LKazKErXE`): `GET/POST /icp/config`, `GET /icp/admin`, `POST /icp/rescore`, `GET /icp/history`. Publishing and bulk rescoring need `X-Psycray-Admin` (checked in SQL). The active version is applied to fresh research, cached research (rescored when its version is outdated), `/research/rescore`, and the account-brief prompt now states the hard-requirement outcome
+- **ICP Studio** (`/icp`, own nav item): weight sliders + inputs + locks, total meter, rebalance that lists every change before you apply it, baseline with formula, criteria editors, hard requirements, versions sheet (load any version into the draft), publish dialog (change list, validation, note, admin sign-in, 409 conflict), live preview on a saved company (published vs draft, per-criterion cause), recalculate saved companies with before/after summary. Company page: requirements, grouped change reasons, score history
+- **Admin key:** one named admin ("Jovial"); the key is in `.env.local` as `PSYCRAY_ADMIN_KEY`, only its hash is in Neon
+- **Tests:** 79 passing (`npm test`). Browser-tested in mock mode (full flow incl. publish + recalculate) and read-only on live (preview, sign-in, publish dialog, no-op recalculation, history)
+- **Not yet exercised on live:** an actual publish and a bulk rescore that writes rows. A test publish was blocked because versions are permanent; the first real publish is the live test
 
 ### 2026-11-21 · Deterministic ICP scoring
 

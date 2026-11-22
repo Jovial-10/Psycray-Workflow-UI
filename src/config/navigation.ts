@@ -4,6 +4,7 @@ import {
   LayoutDashboard,
   Search,
   Settings,
+  SlidersHorizontal,
   type LucideIcon,
 } from "lucide-react"
 
@@ -45,6 +46,13 @@ export const navItems: NavItem[] = [
     description: "Sales-ready briefs for validated accounts",
     path: "/briefs",
     icon: FileText,
+    section: "main",
+  },
+  {
+    title: "ICP Studio",
+    description: "Weights, criteria and requirements behind every score",
+    path: "/icp",
+    icon: SlidersHorizontal,
     section: "main",
   },
   {

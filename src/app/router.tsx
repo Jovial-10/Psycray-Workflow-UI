@@ -6,6 +6,7 @@ import { CompanyResearchPage } from "@/pages/CompanyResearchPage"
 import { NotFoundPage } from "@/pages/NotFoundPage"
 import { OverviewPage } from "@/pages/OverviewPage"
 import { SavedCompaniesPage } from "@/pages/SavedCompaniesPage"
+import { IcpStudioPage } from "@/pages/IcpStudioPage"
 import { SettingsPage } from "@/pages/SettingsPage"
 
 /** Route paths must match `config/navigation.ts`. */
@@ -18,6 +19,7 @@ export const router = createBrowserRouter([
       { path: "companies", element: <SavedCompaniesPage /> },
       { path: "companies/:domain", element: <CompanyDetailPage /> },
       { path: "briefs", element: <AccountBriefsPage /> },
+      { path: "icp", element: <IcpStudioPage /> },
       { path: "settings", element: <SettingsPage /> },
       { path: "*", element: <NotFoundPage /> },
     ],

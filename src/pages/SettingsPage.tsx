@@ -1,5 +1,6 @@
-import { Monitor, Moon, SlidersHorizontal, Sun } from "lucide-react"
-import { EmptyState } from "@/components/common/EmptyState"
+import { ArrowRight, Monitor, Moon, Sun } from "lucide-react"
+import { Link } from "react-router"
+import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { useTheme } from "@/hooks/useTheme"
 import type { ThemePreference } from "@/lib/theme"
@@ -50,11 +51,20 @@ export function SettingsPage() {
         </CardContent>
       </Card>
 
-      <EmptyState
-        icon={SlidersHorizontal}
-        title="ICP configuration comes next"
-        description="Editable criteria, weights and hard requirements for scoring are planned for Phase 2.2."
-      />
+      <Card>
+        <CardHeader>
+          <CardTitle>ICP scoring</CardTitle>
+          <CardDescription>Weights, baseline, criteria and hard requirements are edited and versioned in ICP Studio.</CardDescription>
+        </CardHeader>
+        <CardContent>
+          <Button asChild variant="outline" size="sm">
+            <Link to="/icp">
+              Open ICP Studio
+              <ArrowRight />
+            </Link>
+          </Button>
+        </CardContent>
+      </Card>
     </div>
   )
 }

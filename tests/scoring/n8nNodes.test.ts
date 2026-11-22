@@ -8,9 +8,8 @@ import { describe, it } from "node:test"
 import {
   AGENT_WORKFLOW,
   API_WORKFLOW,
+  GENERATED_NODES,
   nodeCode,
-  rescoreNodeCode,
-  scoringNodeCode,
 } from "../../scripts/n8n-scoring.ts"
 import { normalizeEvidence, scoreCompany } from "./engine.ts"
 import { BASECAMP_SEARCH_RESULTS, basecampClassification, basecampContext, basecampHiringSignal } from "./fixtures.ts"
@@ -48,9 +47,8 @@ function rescore(row: Json, now = "2026-12-01T00:00:00.000Z"): Json {
 }
 
 describe("generated n8n code", () => {
-  it("the workflow files contain the current engine (run `npm run sync:n8n` if this fails)", () => {
-    assert.equal(nodeCode(AGENT_WORKFLOW, "ICP Scoring Logic"), scoringNodeCode())
-    assert.equal(nodeCode(API_WORKFLOW, "Recalculate Score"), rescoreNodeCode())
+  it("every workflow file contains the current engine (run `npm run sync:n8n` if this fails)", () => {
+    for (const [file, node, build] of GENERATED_NODES) assert.equal(nodeCode(file, node), build(), node)
   })
 
   it("the research node scores exactly like the engine", () => {
@@ -60,7 +58,7 @@ describe("generated n8n code", () => {
     assert.equal(out.icp_tier, direct.tier)
     assert.deepEqual(out.icp_breakdown.criteria, direct.criteria)
     assert.equal(out.icp_breakdown.snapshot_id, "exec-40814")
-    assert.equal(out.icp_breakdown.algorithm_version, "2.0.0")
+    assert.equal(out.icp_breakdown.algorithm_version, "3.0.0")
     assert.equal(out.icp_breakdown.config_version, "psycray-default-2026-11-21")
     assert.equal(out.parsed_synthesis.icp_evidence.domain, "basecamp.com")
     assert.equal(out.score_trigger, "research")

@@ -6,7 +6,7 @@
  * layer is needed when the real backend is connected.
  */
 
-import type { EvidenceRef, ScoreChange } from "@/lib/scoring/icpEngine"
+import type { EvidenceRef, IcpConfig, IcpEvidence, Qualification, RequirementResult, ScoreChange } from "@/lib/scoring/icpEngine"
 
 /* ------------------------------------------------------------------ */
 /* Input                                                               */
@@ -106,6 +106,8 @@ export interface SynthesizedResearch {
   reasonable_inferences: ReasonableInference[]
   unknowns: string[]
   recent_signals: RecentSignal[]
+  /** Normalised scoring evidence (engine v2+). Lets the ICP Studio preview and rescoring run without new research. */
+  icp_evidence?: IcpEvidence | null
 }
 
 /* ------------------------------------------------------------------ */
@@ -152,6 +154,13 @@ export interface IcpScoring {
   snapshot_id: string | null
   evidence_fingerprint: string | null
   calculated_at: string | null
+  /** Database id of the published ICP version (engine v3+). */
+  config_version_id: number | null
+  baseline: number
+  max_possible_tier: IcpTier | null
+  /** Hard requirements, evaluated separately from the score (engine v3+). */
+  requirements: RequirementResult[]
+  qualification: Qualification | null
   previous: { score: number | null; tier: string | null; calculated_at: string | null; algorithm_version: string } | null
   change: ScoreChange | null
 }
@@ -260,6 +269,52 @@ export type ResearchJobSummary = Pick<ResearchJob, "job_id" | "status" | "input"
 export interface ResearchJobList {
   jobs: ResearchJobSummary[]
   source: "live" | "sample"
+}
+
+/* ------------------------------------------------------------------ */
+/* ICP configuration — `icp_profiles`, `icp_config_versions`           */
+/* ------------------------------------------------------------------ */
+
+export interface IcpConfigVersion {
+  id: number
+  version: number
+  /** Stamped on scores as `config_version`. */
+  label: string
+  config: IcpConfig
+  note: string | null
+  change_summary: { kind: string; text: string }[]
+  published_by: string
+  published_at: string
+}
+
+/** Reply to `GET /api/icp/config`. */
+export interface IcpConfigState {
+  profile: { slug: string; name: string; active_version_id: number }
+  /** Newest first. */
+  versions: IcpConfigVersion[]
+}
+
+/** Reply to `POST /api/icp/rescore`. */
+export interface RescoreAllSummary {
+  config_version: string
+  rescored: number
+  unchanged: number
+  up_to_date: number
+  needs_refresh: string[]
+  changes: { domain: string; previous: number | null; updated: number }[]
+}
+
+export interface ScoreHistoryEntry {
+  id: number
+  trigger: "research" | "refresh" | "recalculate"
+  score: number | null
+  tier: string | null
+  algorithm_version: string
+  config_version: string | null
+  config_version_id: number | null
+  snapshot_id: string | null
+  calculated_at: string
+  change: ScoreChange | null
 }
 
 /** Reply to `POST /api/research/rescore`. */

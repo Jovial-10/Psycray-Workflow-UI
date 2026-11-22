@@ -152,6 +152,7 @@ Imports use the `@/` alias for `src/`, e.g. `import { api } from "@/services/api
 | `/companies` | Saved Companies  | **Built:** search, fit-tier filter, sort; unreachable domains with Try again |
 | `/companies/:domain` | Company  | **Built:** a company's saved research (no re-run), with Refresh |
 | `/briefs`    | Account Briefs   | Read sales-ready briefs for validated accounts      |
+| `/icp`       | ICP Studio       | Weights, baseline, criteria, requirements, versions |
 | `/settings`  | Settings         | Backend connection and scoring reference            |
 | `*`          | Not Found        | Fallback for unknown URLs                           |
 
@@ -209,6 +210,9 @@ same config + same algorithm version → same score.
 | Growth Signals      |    25% | verified signals about this company in the last 18 months |
 | Project Ownership   |    10% | a named technical/product/ops owner or in-house team      |
 
+These are the defaults (version 1). Weights, a baseline
+(`score = baseline + (100 − baseline) × weightedFit`), criteria and hard
+requirements are edited and versioned in **ICP Studio** (`/icp`).
 No evidence → **unknown** (0 points, listed as missing, not a failure).
 **High Fit** ≥ 80 · **Moderate Fit** ≥ 55 · **Low Fit** < 55 · **Needs Review**
 when under 50% of the weight had evidence. After editing the engine, run

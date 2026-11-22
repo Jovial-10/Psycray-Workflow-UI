@@ -1,9 +1,13 @@
 import { z } from "zod"
+import { normalizeConfig, type IcpEvidence } from "@/lib/scoring/icpEngine"
 import type {
   CompanyResearchRecord,
   CustomerType,
+  IcpConfigState,
   IcpCriterionScore,
   IcpScoring,
+  RescoreAllSummary,
+  ScoreHistoryEntry,
   RescoreResponse,
   ResearchJob,
   ResearchJobSummary,
@@ -60,6 +64,11 @@ const synthesizedResearch = z.object({
       }),
     )
     .catch([]),
+  // Saved scoring evidence: validated by the engine where it is used, kept as-is here
+  icp_evidence: z
+    .unknown()
+    .optional()
+    .transform((v) => (v && typeof v === "object" && "domain" in v ? (v as IcpEvidence) : null)),
 })
 
 const evidenceRef = z.object({
@@ -96,6 +105,22 @@ const storedBreakdown = z
     snapshot_id: str.optional(),
     evidence_fingerprint: str.optional(),
     calculated_at: str.optional(),
+    config_version_id: num.optional(),
+    baseline: num.optional(),
+    tier_if_unknowns_met: icpTier.nullable().optional().catch(null),
+    requirements: z
+      .array(
+        z.object({
+          key: z.enum(["location", "b2b", "min_employees", "min_revenue"]),
+          requirement: z.string(),
+          status: z.enum(["pass", "fail", "unknown"]).catch("unknown"),
+          reason: z.string().catch(""),
+          evidence: z.array(evidenceRef).catch([]),
+        }),
+      )
+      .optional()
+      .catch([]),
+    qualification: z.enum(["qualified", "disqualified", "unverified", "no_requirements"]).nullable().optional().catch(null),
     previous: z
       .object({
         score: num,
@@ -112,6 +137,12 @@ const storedBreakdown = z
         updated_score: num,
         delta: num,
         reasons: strList,
+        details: z
+          .array(z.object({ kind: z.enum(["algorithm", "configuration", "evidence", "unchanged"]).catch("evidence"), text: z.string() }))
+          .optional()
+          .catch(undefined),
+        config_effect: num.optional().transform((v) => v ?? null),
+        evidence_effect: num.optional().transform((v) => v ?? null),
         criteria: z
           .array(z.object({ criterion: z.string(), previous: num, updated: z.number(), delta: num }))
           .catch([]),
@@ -138,8 +169,15 @@ const storedBreakdown = z
         snapshot_id: v.snapshot_id ?? null,
         evidence_fingerprint: v.evidence_fingerprint ?? null,
         calculated_at: v.calculated_at ?? null,
+        config_version_id: v.config_version_id ?? null,
+        baseline: v.baseline ?? 0,
+        max_possible_tier: v.tier_if_unknowns_met ?? null,
+        requirements: v.requirements ?? [],
+        qualification: v.qualification ?? null,
         previous: v.previous ?? null,
-        change: v.change ?? null,
+        change: v.change
+          ? { ...v.change, details: v.change.details ?? v.change.reasons.map((text) => ({ kind: "evidence" as const, text })) }
+          : null,
       },
     }
   })
@@ -225,4 +263,66 @@ export const rescoreResponseSchema = z.object({
 /** Reply to `GET /api/research/jobs`. */
 export const researchJobListSchema = z.object({
   jobs: lenientList<ResearchJobSummary>(researchJobSummary, "research job"),
+})
+
+/* ------------------------------------------------------------------ */
+/* ICP configuration                                                   */
+/* ------------------------------------------------------------------ */
+
+const icpConfigVersion = z.object({
+  id: z.number(),
+  version: z.number(),
+  label: z.string(),
+  // Stored configs are filled to the current shape, so older versions still load
+  config: z.unknown().transform(normalizeConfig),
+  note: str,
+  change_summary: z.array(z.object({ kind: z.string(), text: z.string() })).nullable().catch(null).transform((v) => v ?? []),
+  published_by: z.string(),
+  published_at: z.string(),
+})
+
+/** Reply to `GET /api/icp/config`. */
+export const icpConfigStateSchema = z.object({
+  profile: z.object({ slug: z.string(), name: z.string(), active_version_id: z.number() }),
+  versions: z.array(icpConfigVersion),
+}) satisfies z.ZodType<IcpConfigState>
+
+/** Reply to `POST /api/icp/config`. */
+export const publishResponseSchema = z.object({ version: icpConfigVersion })
+
+/** Reply to `GET /api/icp/admin`. */
+export const adminSchema = z.object({ name: z.string() })
+
+/** Reply to `POST /api/icp/rescore`. */
+export const rescoreAllSchema = z.object({
+  config_version: z.string(),
+  rescored: z.number(),
+  unchanged: z.number(),
+  up_to_date: z.number(),
+  needs_refresh: strList,
+  changes: z.array(z.object({ domain: z.string(), previous: num, updated: z.number() })).catch([]),
+}) satisfies z.ZodType<RescoreAllSummary>
+
+/** Reply to `GET /api/icp/history?domain=`. */
+export const scoreHistorySchema = z.object({
+  entries: lenientList<ScoreHistoryEntry>(
+    z.object({
+      id: z.number(),
+      trigger: z.enum(["research", "refresh", "recalculate"]),
+      score: num,
+      tier: str,
+      algorithm_version: z.string(),
+      config_version: str,
+      config_version_id: num,
+      snapshot_id: str,
+      calculated_at: z.string(),
+      change: z
+        .object({ previous_score: num, updated_score: num, delta: num, reasons: strList })
+        .passthrough()
+        .nullable()
+        .catch(null)
+        .transform((c) => c as ScoreHistoryEntry["change"]),
+    }),
+    "score history entry",
+  ),
 })

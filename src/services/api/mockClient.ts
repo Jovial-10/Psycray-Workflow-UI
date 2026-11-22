@@ -1,5 +1,17 @@
-import { evaluate, summarizeStored } from "@/lib/scoring/icpEngine"
-import { mockCompanies, mockEvidence } from "@/mocks/companies"
+import {
+  DEFAULT_ICP_CONFIG,
+  ICP_ALGORITHM_VERSION,
+  describeConfigChanges,
+  evaluate,
+  normalizeConfig,
+  summarizeStored,
+  supplementEvidence,
+  validateConfig,
+  type IcpConfig,
+} from "@/lib/scoring/icpEngine"
+import { mockCompanies } from "@/mocks/companies"
+import { ago } from "@/mocks/time"
+import type { CompanyResearchRecord, IcpConfigVersion, ScoreHistoryEntry } from "@/types/research"
 import { parseStoredBreakdown } from "./schemas"
 import { mockResearchJobs } from "@/mocks/researchJobs"
 import type { ResearchJob, ResearchJobStatus } from "@/types/research"
@@ -59,6 +71,62 @@ const ERRORS: Partial<Record<ResearchJobStatus, string>> = {
   not_found: "No official website could be identified for this company.",
 }
 
+/* ICP configuration, kept in memory for the session (mirrors icp_config_versions) */
+const mockVersions: IcpConfigVersion[] = [
+  {
+    id: 1,
+    version: 1,
+    label: DEFAULT_ICP_CONFIG.version,
+    config: DEFAULT_ICP_CONFIG,
+    note: "Initial configuration: weights 20/15/30/25/10, baseline 0, no hard requirements",
+    change_summary: [],
+    published_by: "system",
+    published_at: ago(21),
+  },
+]
+let activeVersionId = 1
+const mockHistory = new Map<string, ScoreHistoryEntry[]>()
+const active = () => mockVersions.find((v) => v.id === activeVersionId)!
+
+function requireAdmin(key: string) {
+  if (key.trim().length < 8) throw new ApiError("An ICP admin key is required for this action.", 401)
+}
+
+/** Same rules as the n8n rescoring nodes: saved evidence only, active version. */
+function rescoreRecord(record: CompanyResearchRecord, config: IcpConfig, configId: number) {
+  const saved = record.synthesized_research?.icp_evidence
+  if (!saved) return null
+  const previous = summarizeStored(
+    { ...record.icp_scoring, score: record.icp_score, criteria: record.icp_breakdown },
+    record.icp_score,
+    record.icp_tier,
+  )
+  const result = evaluate(supplementEvidence(saved, record.company_facts), {
+    config,
+    config_version_id: configId,
+    snapshot_id: record.icp_scoring?.snapshot_id ?? null,
+    calculated_at: new Date().toISOString(),
+    previous,
+  })
+  const { criteria, scoring } = parseStoredBreakdown(result)
+  const updated: CompanyResearchRecord = { ...record, icp_score: result.score, icp_tier: result.tier, icp_breakdown: criteria, icp_scoring: scoring }
+  const entries = mockHistory.get(record.domain) ?? []
+  entries.unshift({
+    id: Date.now() + entries.length,
+    trigger: "recalculate",
+    score: result.score,
+    tier: result.tier,
+    algorithm_version: result.algorithm_version,
+    config_version: result.config_version,
+    config_version_id: configId,
+    snapshot_id: result.snapshot_id,
+    calculated_at: result.calculated_at!,
+    change: result.change,
+  })
+  mockHistory.set(record.domain, entries)
+  return { updated, previous: previous?.score ?? null }
+}
+
 export const mockResearchApi: ResearchApi = {
   async listCompanies() {
     const records = emptyScenario
@@ -106,20 +174,73 @@ export const mockResearchApi: ResearchApi = {
   async recalculateScore(domain) {
     const index = mockCompanies.findIndex((c) => c.domain === domain && c.status === "validated")
     if (index === -1) throw new ApiError("No saved research for this domain.", 404)
-    const record = mockCompanies[index]
-    const evidence = mockEvidence.get(domain)
-    if (!evidence) {
+    const out = rescoreRecord(mockCompanies[index], active().config, activeVersionId)
+    if (!out) {
       throw new ApiError("This research predates evidence-based scoring. Refresh it once to collect scoring evidence.", 409)
     }
-    const previous = summarizeStored({ ...record.icp_scoring, criteria: record.icp_breakdown }, record.icp_score, record.icp_tier)
-    const result = evaluate(evidence, {
-      snapshot_id: record.icp_scoring?.snapshot_id ?? null,
-      calculated_at: new Date().toISOString(),
-      previous,
+    mockCompanies[index] = out.updated
+    return delay({ record: out.updated })
+  },
+
+  async getIcpConfig() {
+    return delay({
+      profile: { slug: "psycray-default", name: "Psycray default ICP", active_version_id: activeVersionId },
+      versions: [...mockVersions].sort((a, b) => b.version - a.version),
     })
-    const { criteria, scoring } = parseStoredBreakdown(result)
-    const updated = { ...record, icp_score: result.score, icp_tier: result.tier, icp_breakdown: criteria, icp_scoring: scoring }
-    mockCompanies[index] = updated
-    return delay({ record: updated })
+  },
+
+  async checkAdmin(adminKey) {
+    requireAdmin(adminKey)
+    return delay({ name: "Sample admin" })
+  },
+
+  async publishIcpConfig(adminKey, { config, baseVersionId, note }) {
+    requireAdmin(adminKey)
+    if (baseVersionId !== activeVersionId) {
+      throw new ApiError("Someone published a newer version while you were editing. Reload to see it, then reapply your changes.", 409)
+    }
+    const version = Math.max(...mockVersions.map((v) => v.version)) + 1
+    const next = normalizeConfig({ ...config, version: `psycray-default-v${version}` })
+    const errors = validateConfig(next)
+    if (errors.length) throw new ApiError("The configuration is not valid.", 400, errors)
+    const changes = describeConfigChanges(active().config, next)
+    if (changes.length === 0) throw new ApiError("Nothing changed: this matches the published version.", 400)
+    const row: IcpConfigVersion = {
+      id: version,
+      version,
+      label: next.version,
+      config: next,
+      note: note.trim() || null,
+      change_summary: changes,
+      published_by: "Sample admin",
+      published_at: new Date().toISOString(),
+    }
+    mockVersions.push(row)
+    activeVersionId = row.id
+    return delay(row)
+  },
+
+  async rescoreAll(adminKey) {
+    requireAdmin(adminKey)
+    const { config } = active()
+    const summary = { config_version: config.version, rescored: 0, unchanged: 0, up_to_date: 0, needs_refresh: [] as string[], changes: [] as { domain: string; previous: number | null; updated: number }[] }
+    mockCompanies.forEach((record, i) => {
+      if (record.status !== "validated") return
+      if (record.icp_scoring?.config_version === config.version && record.icp_scoring.algorithm_version === ICP_ALGORITHM_VERSION) {
+        summary.up_to_date++
+        return
+      }
+      const out = rescoreRecord(record, config, activeVersionId)
+      if (!out) return void summary.needs_refresh.push(record.domain)
+      mockCompanies[i] = out.updated
+      summary.rescored++
+      if (out.previous === out.updated.icp_score) summary.unchanged++
+      else summary.changes.push({ domain: record.domain, previous: out.previous, updated: out.updated.icp_score! })
+    })
+    return delay(summary)
+  },
+
+  async getScoreHistory(domain) {
+    return delay(mockHistory.get(domain) ?? [])
   },
 }

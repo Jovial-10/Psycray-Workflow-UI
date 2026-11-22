@@ -1,6 +1,11 @@
 import type { z } from "zod"
 import {
+  adminSchema,
   companyListSchema,
+  icpConfigStateSchema,
+  publishResponseSchema,
+  rescoreAllSchema,
+  scoreHistorySchema,
   researchJobListSchema,
   rescoreResponseSchema,
   researchJobSchema,
@@ -33,7 +38,11 @@ async function request<T>(path: string, schema: z.ZodType<T>, init?: RequestInit
       body && typeof body === "object" && "error" in body && typeof body.error === "string"
         ? body.error
         : `The research service returned an error (HTTP ${response.status}).`
-    throw new ApiError(message, response.status)
+    const details =
+      body && typeof body === "object" && "details" in body && Array.isArray(body.details)
+        ? body.details.filter((d): d is string => typeof d === "string")
+        : []
+    throw new ApiError(message, response.status, details)
   }
 
   const parsed = schema.safeParse(body)
@@ -65,6 +74,32 @@ export const httpResearchApi: ResearchApi = {
   async listResearchJobs() {
     const { jobs } = await request("/research/jobs", researchJobListSchema)
     return { jobs, source: "live" as const }
+  },
+
+  getIcpConfig() {
+    return request("/icp/config", icpConfigStateSchema)
+  },
+
+  checkAdmin(adminKey) {
+    return request("/icp/admin", adminSchema, { headers: { "X-Psycray-Admin": adminKey } })
+  },
+
+  async publishIcpConfig(adminKey, { config, baseVersionId, note }) {
+    const { version } = await request("/icp/config", publishResponseSchema, {
+      method: "POST",
+      headers: { "Content-Type": "application/json", "X-Psycray-Admin": adminKey },
+      body: JSON.stringify({ config, base_version_id: baseVersionId, note }),
+    })
+    return version
+  },
+
+  rescoreAll(adminKey) {
+    return request("/icp/rescore", rescoreAllSchema, { method: "POST", headers: { "X-Psycray-Admin": adminKey } })
+  },
+
+  async getScoreHistory(domain) {
+    const { entries } = await request(`/icp/history?domain=${encodeURIComponent(domain)}`, scoreHistorySchema)
+    return entries
   },
 
   recalculateScore(domain) {

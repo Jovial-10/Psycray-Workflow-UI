@@ -2,7 +2,7 @@ import { Calculator, ExternalLink, RefreshCw } from "lucide-react"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { Card, CardAction, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
-import type { EvidenceRef } from "@/lib/scoring/icpEngine"
+import type { EvidenceRef, ScoreChange } from "@/lib/scoring/icpEngine"
 import { cn } from "@/lib/utils"
 import type {
   CompanyFacts,
@@ -13,6 +13,7 @@ import type {
 } from "@/types/research"
 import { BriefText } from "./BriefText"
 import { FitBadge } from "./FitBadge"
+import { QualificationBadge } from "./QualificationBadge"
 
 interface ResearchResultProps {
   /** True when showing previously saved research rather than a fresh run. */
@@ -151,6 +152,14 @@ function CompanyProfile({
   )
 }
 
+/** Change reasons grouped by cause: settings changes read apart from new evidence. */
+const CHANGE_GROUPS: { kind: ScoreChange["details"][number]["kind"]; label: string | null }[] = [
+  { kind: "algorithm", label: "Scoring update" },
+  { kind: "configuration", label: "ICP configuration" },
+  { kind: "evidence", label: "Research evidence" },
+  { kind: "unchanged", label: null },
+]
+
 const statusLabel: Record<IcpCriterionScore["status"], string> = {
   met: "Met",
   partial: "Partly met",
@@ -203,7 +212,34 @@ function IcpScorecard({ score, tier, breakdown, scoring, onRecalculate, recalcul
               {scoring.coverage}% of the score had evidence. Up to {scoring.max_possible} if the unknowns are met.
             </p>
           )}
+          {scoring && scoring.baseline > 0 && (
+            <p className="mt-1 text-xs text-muted-foreground tabular-nums">
+              Includes a baseline of {scoring.baseline}; criteria fill the other {100 - scoring.baseline} points.
+            </p>
+          )}
         </div>
+
+        {scoring && scoring.requirements.length > 0 && (
+          <div className="space-y-1.5 text-xs">
+            <div className="flex items-center justify-between gap-2">
+              <p className="font-medium">Hard requirements</p>
+              <QualificationBadge qualification={scoring.qualification} />
+            </div>
+            <ul className="space-y-1">
+              {scoring.requirements.map((r) => (
+                <li key={r.key}>
+                  <span className="flex justify-between gap-3">
+                    <span>{r.requirement}</span>
+                    <span className={cn("shrink-0", r.status === "fail" ? "text-danger-foreground" : "text-muted-foreground", r.status === "unknown" && "italic")}>
+                      {r.status === "pass" ? "Pass" : r.status === "fail" ? "Fail" : "Unknown"}
+                    </span>
+                  </span>
+                  <span className="text-muted-foreground">{r.reason}</span>
+                </li>
+              ))}
+            </ul>
+          </div>
+        )}
 
         {recalcError && (
           <p role="alert" className="rounded-md border border-danger-border bg-danger-soft px-3 py-2 text-xs text-danger-foreground">
@@ -221,11 +257,20 @@ function IcpScorecard({ score, tier, breakdown, scoring, onRecalculate, recalcul
                 Updated score: <span className="font-medium text-foreground">{change.updated_score}</span>
               </span>
             </p>
-            <ul className="space-y-1 text-muted-foreground">
-              {change.reasons.map((r) => (
-                <li key={r}>{r}</li>
-              ))}
-            </ul>
+            {CHANGE_GROUPS.map(({ kind, label }) => {
+              const items = change.details.filter((d) => d.kind === kind)
+              if (items.length === 0) return null
+              return (
+                <div key={kind}>
+                  {label && <p className="font-medium text-foreground">{label}</p>}
+                  <ul className="space-y-1 text-muted-foreground">
+                    {items.map((d) => (
+                      <li key={d.text}>{d.text}</li>
+                    ))}
+                  </ul>
+                </div>
+              )
+            })}
           </div>
         )}
 

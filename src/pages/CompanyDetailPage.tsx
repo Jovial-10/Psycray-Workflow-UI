@@ -4,6 +4,7 @@ import { Link, useLocation, useNavigate, useParams } from "react-router"
 import { EmptyState } from "@/components/common/EmptyState"
 import { ResearchResult } from "@/components/research/ResearchResult"
 import { ResultSkeleton } from "@/components/research/ResultSkeleton"
+import { ScoreHistory } from "@/components/research/ScoreHistory"
 import { Button } from "@/components/ui/button"
 import { useCompanies } from "@/hooks/useCompanies"
 import { retryPath } from "@/lib/companies"
@@ -107,15 +108,18 @@ export function CompanyDetailPage() {
           }
         />
       ) : (
-        <ResearchResult
-          saved
-          record={record}
-          refreshing={false}
-          onRefresh={() => navigate(retryPath(domain))}
-          onRecalculate={recalc.run}
-          recalculating={recalc.pending}
-          recalcError={recalc.error}
-        />
+        <>
+          <ResearchResult
+            saved
+            record={record}
+            refreshing={false}
+            onRefresh={() => navigate(retryPath(domain))}
+            onRecalculate={recalc.run}
+            recalculating={recalc.pending}
+            recalcError={recalc.error}
+          />
+          <ScoreHistory domain={domain} refreshKey={recalc.record} />
+        </>
       )}
     </div>
   )

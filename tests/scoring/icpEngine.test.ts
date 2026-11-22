@@ -38,7 +38,7 @@ describe("configuration", () => {
   it("rejects weights that don't sum to 100", () => {
     const bad: IcpConfig = { ...DEFAULT_ICP_CONFIG, weights: { ...DEFAULT_ICP_CONFIG.weights, industry_fit: 25 } }
     const ev = normalizeEvidence(basecampClassification, basecampContext)
-    assert.throws(() => scoreCompany(ev, bad), /sum to 100/)
+    assert.throws(() => scoreCompany(ev, bad), /total exactly 100%/)
   })
 })
 

@@ -14,10 +14,12 @@ import { dirname, join } from "node:path"
 import { fileURLToPath } from "node:url"
 
 const root = join(dirname(fileURLToPath(import.meta.url)), "..")
-const WORKFLOWS = {
-  agent: { id: "w3vjp1OmemH8zG3A", file: "psycray-research-agent-v2" },
-  api: { id: "oRmS31cJqbOcTmQ4", file: "psycray-research-api" },
-} as const
+const WORKFLOWS: Record<string, { id: string | null; name: string; file: string }> = {
+  agent: { id: "w3vjp1OmemH8zG3A", name: "Psycray Research Agent v2", file: "psycray-research-agent-v2" },
+  api: { id: "oRmS31cJqbOcTmQ4", name: "Psycray Research API", file: "psycray-research-api" },
+  // Created 2026-11-22 by this script (id null = create on first deploy)
+  icp: { id: "gGaWTj8LKazKErXE", name: "Psycray ICP API", file: "psycray-icp-api" },
+}
 
 function env(name: string): string {
   const line = readFileSync(join(root, ".env.local"), "utf8")
@@ -37,27 +39,40 @@ async function call(method: string, path: string, body?: unknown) {
   return res.json() as Promise<Record<string, any>>
 }
 
-for (const key of process.argv.slice(2) as (keyof typeof WORKFLOWS)[]) {
+async function activate(id: string) {
+  await call("POST", `/workflows/${id}/activate`)
+  return call("GET", `/workflows/${id}`)
+}
+
+for (const key of process.argv.slice(2)) {
   const wf = WORKFLOWS[key]
   if (!wf) throw new Error(`Unknown workflow "${key}" (use: ${Object.keys(WORKFLOWS).join(", ")})`)
-  const backups = readdirSync(join(root, "n8n/workflows/backups")).filter((f) => f.startsWith(wf.file + ".")).sort()
-  const backup = JSON.parse(readFileSync(join(root, "n8n/workflows/backups", backups.at(-1)!), "utf8"))
+  const local = JSON.parse(readFileSync(join(root, "n8n/workflows", `${wf.file}.json`), "utf8"))
+  const body = { name: local.name, nodes: local.nodes, connections: local.connections, settings: local.settings }
 
+  if (wf.id === null) {
+    const existing = ((await call("GET", "/workflows?limit=250")).data as { id: string; name: string }[]).find((w) => w.name === wf.name)
+    if (!existing) {
+      const created = await call("POST", "/workflows", body)
+      const final = await activate(created.id)
+      writeFileSync(join(root, "n8n/workflows", `${wf.file}.json`), JSON.stringify(final, null, 2) + "\n")
+      console.log(`${key}: created ${final.id} (${final.nodes.length} nodes, active=${final.active})`)
+      continue
+    }
+    wf.id = existing.id
+  }
+
+  const backups = readdirSync(join(root, "n8n/workflows/backups")).filter((f) => f.startsWith(wf.file + ".")).sort()
   const live = await call("GET", `/workflows/${wf.id}`)
+  if (backups.length === 0) throw new Error(`${key}: no backup in n8n/workflows/backups. Back it up first.`)
+  const backup = JSON.parse(readFileSync(join(root, "n8n/workflows/backups", backups.at(-1)!), "utf8"))
   if (live.updatedAt !== backup.updatedAt) {
     throw new Error(`${key}: live workflow changed since backup ${backups.at(-1)} (${live.updatedAt}). Back it up again first.`)
   }
 
-  const local = JSON.parse(readFileSync(join(root, "n8n/workflows", `${wf.file}.json`), "utf8"))
-  await call("PUT", `/workflows/${wf.id}`, {
-    name: local.name,
-    nodes: local.nodes,
-    connections: local.connections,
-    settings: local.settings,
-  })
+  await call("PUT", `/workflows/${wf.id}`, body)
   const after = await call("GET", `/workflows/${wf.id}`)
-  if (!after.active) await call("POST", `/workflows/${wf.id}/activate`)
-  const final = after.active ? after : await call("GET", `/workflows/${wf.id}`)
+  const final = after.active ? after : await activate(wf.id!)
   writeFileSync(join(root, "n8n/workflows", `${wf.file}.json`), JSON.stringify(final, null, 2) + "\n")
   console.log(`${key}: deployed (${final.nodes.length} nodes, active=${final.active}, updatedAt ${final.updatedAt})`)
 }

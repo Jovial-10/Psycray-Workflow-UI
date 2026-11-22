@@ -498,3 +498,8 @@ SaaS platform automating accounts payable for credit unions. A new core-banking 
     },
   }),
 ]
+
+// Keep each mock company's scoring evidence with its research, as n8n saves it
+for (const record of mockCompanies) {
+  if (record.synthesized_research) record.synthesized_research.icp_evidence = mockEvidence.get(record.domain) ?? null
+}
