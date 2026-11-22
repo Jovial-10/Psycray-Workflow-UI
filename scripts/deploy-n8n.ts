@@ -39,6 +39,12 @@ async function call(method: string, path: string, body?: unknown) {
   return res.json() as Promise<Record<string, any>>
 }
 
+/** Saves what runs (not n8n's history snapshots), plus the fields backups are compared on. */
+function saveExport(file: string, wf: Record<string, any>) {
+  const { id, name, active, updatedAt, nodes, connections, settings } = wf
+  writeFileSync(join(root, "n8n/workflows", `${file}.json`), JSON.stringify({ id, name, active, updatedAt, nodes, connections, settings }, null, 2) + "\n")
+}
+
 async function activate(id: string) {
   await call("POST", `/workflows/${id}/activate`)
   return call("GET", `/workflows/${id}`)
@@ -55,7 +61,7 @@ for (const key of process.argv.slice(2)) {
     if (!existing) {
       const created = await call("POST", "/workflows", body)
       const final = await activate(created.id)
-      writeFileSync(join(root, "n8n/workflows", `${wf.file}.json`), JSON.stringify(final, null, 2) + "\n")
+      saveExport(wf.file, final)
       console.log(`${key}: created ${final.id} (${final.nodes.length} nodes, active=${final.active})`)
       continue
     }
@@ -73,6 +79,6 @@ for (const key of process.argv.slice(2)) {
   await call("PUT", `/workflows/${wf.id}`, body)
   const after = await call("GET", `/workflows/${wf.id}`)
   const final = after.active ? after : await activate(wf.id!)
-  writeFileSync(join(root, "n8n/workflows", `${wf.file}.json`), JSON.stringify(final, null, 2) + "\n")
+  saveExport(wf.file, final)
   console.log(`${key}: deployed (${final.nodes.length} nodes, active=${final.active}, updatedAt ${final.updatedAt})`)
 }

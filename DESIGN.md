@@ -300,7 +300,7 @@ Restrained and compact.
 - **Items:** 32px rows, 8px radius, 13.5px text with 16px Lucide icons and a 2px gap between rows. Inactive items use the sidebar ink (zinc-700, or zinc-400 in dark mode).
 - **Hover / Active:** a soft accent fill (zinc-200 at 60% in light mode, zinc-900 in dark mode) with near-black text; the active item also goes medium weight and its icon turns indigo. Active is the only indigo in the sidebar.
 - **Brand:** the "Psycray" word at 15px semibold, in a 56px header row that lines up with the app header. (The build also shows a "P" initial tile as a stand-in until Psycray supplies a logo; it is a placeholder, not a mark to reuse.)
-- **Footer:** the placeholder user ("Psycray Team · Placeholder account") with a 32px initials avatar; when collapsed, the avatar is focusable and shows a tooltip.
+- **Footer:** none. There are no user accounts, so the sidebar ends with Settings.
 - **Mobile:** a drawer (see Layout).
 
 ### Theme control

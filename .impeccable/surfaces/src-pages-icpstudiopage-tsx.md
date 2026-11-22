@@ -10,12 +10,12 @@ related_targets: ["src/components/icp","src/lib/scoring"]
 Scope: `/icp`, the configurable ICP editor, inside the established shell and
 DESIGN.md. Visitor mode: **Operate**. Build path: code-led.
 
-Audience and task: Psycray sales leads and admins tuning what "a good fit"
+Audience and task: Psycray sales leads tuning what "a good fit"
 means. Adjust weights, baseline, criteria and hard requirements; see what the
 change does to a real saved company before committing; publish a new
 immutable version; then recalculate saved companies from stored evidence
-(never re-running research). Anyone can view and preview; only a named admin
-key can publish or recalculate everything.
+(never re-running research). No logins: anyone with access can preview,
+publish and recalculate; a publish carries an optional name.
 
 Content: the published versions from `GET /icp/config`, saved companies with
 evidence from `GET /companies`, scoring by the shared engine
@@ -23,7 +23,7 @@ evidence from `GET /companies`, scoring by the shared engine
 runs. User decisions: editor + sticky live preview; own nav item; publishing
 offers recalculation but never runs it on its own.
 
-States: loading, load error, no admin key / signed in, unsaved changes, invalid
+States: loading, load error, unsaved changes, invalid
 draft (publish blocked with reasons), publishing, publish conflict (409),
 preview company without evidence (legacy), recalculation running and summary.
 

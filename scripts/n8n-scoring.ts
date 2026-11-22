@@ -240,7 +240,8 @@ return [{
     config,
     note: String(body.note || '').slice(0, 500),
     change_summary: changes,
-    published_by: $('Authorize Admin').first().json.admin_name,
+    // Attribution only: there are no logins
+    published_by: String(body.published_by || '').trim().slice(0, 60) || 'Psycray team',
   },
 }];
 `

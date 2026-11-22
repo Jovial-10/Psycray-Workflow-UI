@@ -52,7 +52,7 @@ Major changes and decisions, plus what comes next. Newest entries first.
 - [ ] `GET /companies/:domain`, only if the list grows past 200 rows (the company page finds its row in the list)
 - [ ] Account Briefs page: browse and open past briefs
 - [ ] Structured brief: confirmed facts vs inferences, signals with dates, source per claim
-- [ ] Access control before public hosting. **Deferred** (you'll decide later)
+- [x] Access control: **no logins or admin keys** (your decision, 2026-11-22). Restrict access at nginx/VPS instead (see INTEGRATION.md → Production)
 - [ ] Deploy to the Psycray VPS (nginx config in [INTEGRATION.md](INTEGRATION.md#production-vps)). **Waiting** on VPS details from you
 
 ### Later
@@ -69,7 +69,7 @@ Major changes and decisions, plus what comes next. Newest entries first.
 | 1 | Hosting | ✅ Psycray VPS → nginx reverse proxy |
 | 2 | n8n | ✅ Self-hosted on Elestio |
 | 3 | `research_jobs` table | ✅ Approved |
-| 4 | Login | ⏸ After end-to-end testing |
+| 4 | Login | ✅ None: no logins or admin keys; access is limited at the server (VPS / nginx) |
 | 5 | Test webhook secret in `.env.local` | ✅ Done |
 | 6 | Exa output for "Zapier" | ✅ One item per result (`id`, `url`, `title`, `author`) |
 | 7 | A working `N8N_API_KEY` | ✅ Works. Used to read executions and update Psycray workflows (with your go-ahead) |
@@ -78,13 +78,21 @@ Major changes and decisions, plus what comes next. Newest entries first.
 
 ## Log
 
+### 2026-11-22 · Removed admin keys and the placeholder account
+
+- Your call: the app runs on Psycray's VPS, so no logins or admin keys. Publishing and "Recalculate saved companies" are open to anyone who can reach the app; the publish dialog asks for an optional name, shown in version history (remembered on that browser)
+- Removed: admin sign-in UI, `useIcpAdmin`, `AdminSignIn`, the `X-Psycray-Admin` header, the `/icp/admin` endpoint and the authorize nodes in *Psycray ICP API*, the `icp_admins` table (migration 004; nothing else touched: 2 versions, 25 research rows, 7 history rows), `PSYCRAY_ADMIN_KEY` from `.env.local`, and the "Psycray Team · Placeholder account" sidebar footer
+- Kept: the server-side `X-Psycray-Key` (stops direct calls to n8n), server-side validation, immutable versions and 409 on stale publishes
+- **Do at deploy:** restrict the site at nginx (IP allowlist / VPN / basic auth). Without it, anyone with the URL can run research and publish ICP versions
+- Live check without any key: invalid publish → 400 with the reason, recalculate all → 200, `/icp/admin` → 404. Your first real publish (v2, by Jovial) had already confirmed the publish path. 80 tests pass
+
 ### 2026-11-22 · Phase 2.2: ICP Studio (configurable scoring)
 
 - **Engine v3** (`src/lib/scoring/icpEngine.ts`, still the only scoring code): `score = baseline + (100 − baseline) × weightedFit`, never above 100; unknown criteria give a supported score plus `max_possible`; hard requirements (location, B2B, min employees, min revenue) are pass / fail / unknown and separate from the score (`qualification`); `validateConfig`, `normalizeConfig`, `describeConfigChanges`. Score changes are tagged **configuration** vs **evidence** with points attributed to each (they always add up to the delta). With baseline 0 and the default config, v3 reproduces every v2 score (Basecamp stays 48 on live)
 - **Neon** (migration 003, additive): `icp_profiles`, `icp_config_versions` (immutable via trigger; version 1 = the config existing scores used, same label), `icp_admins` (SHA-256 of named keys), `icp_score_history.config_version_id`. Existing 23 research rows and history untouched
 - **n8n:** new *Psycray ICP API* workflow (`gGaWTj8LKazKErXE`): `GET/POST /icp/config`, `GET /icp/admin`, `POST /icp/rescore`, `GET /icp/history`. Publishing and bulk rescoring need `X-Psycray-Admin` (checked in SQL). The active version is applied to fresh research, cached research (rescored when its version is outdated), `/research/rescore`, and the account-brief prompt now states the hard-requirement outcome
 - **ICP Studio** (`/icp`, own nav item): weight sliders + inputs + locks, total meter, rebalance that lists every change before you apply it, baseline with formula, criteria editors, hard requirements, versions sheet (load any version into the draft), publish dialog (change list, validation, note, admin sign-in, 409 conflict), live preview on a saved company (published vs draft, per-criterion cause), recalculate saved companies with before/after summary. Company page: requirements, grouped change reasons, score history
-- **Admin key:** one named admin ("Jovial"); the key is in `.env.local` as `PSYCRAY_ADMIN_KEY`, only its hash is in Neon
+- **Admin key:** one named admin ("Jovial"). *Removed later the same day (no logins; see the entry above)*
 - **Tests:** 79 passing (`npm test`). Browser-tested in mock mode (full flow incl. publish + recalculate) and read-only on live (preview, sign-in, publish dialog, no-op recalculation, history)
 - **Not yet exercised on live:** an actual publish and a bulk rescore that writes rows. A test publish was blocked because versions are permanent; the first real publish is the live test
 

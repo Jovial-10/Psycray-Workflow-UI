@@ -19,8 +19,8 @@ app follows the OS theme and remembers the user's toggle.
 
 Constraints: preserve the Phase 1 architecture (`config/navigation.ts` drives
 both navs, `router.tsx`, pages, services). No full dashboard content yet. No
-logo exists: the brand is the word "Psycray". The user in the footer is a
-labelled placeholder until login is built.
+logo exists: the brand is the word "Psycray". No user footer: the app has no
+logins (decided 2026-11-22).
 
 ## Direction contract
 
@@ -41,7 +41,7 @@ header), can hide the sidebar to get room, switch theme in one click, and on
 a phone reach every section through a drawer.
 
 FIRST VIEWPORT: Left, a 240px sidebar: "Psycray" wordmark on top, five Lucide
-nav items, the placeholder user at the bottom. It collapses to a 48px icon
+nav items, Settings at the bottom. It collapses to a 48px icon
 rail with tooltips (amended from 56px: 48px is the rail width at which
 shadcn's 32px icon buttons center; accepted by the user 2026-11-12). Top, a 56px header strip: collapse toggle, page title and
 one-line description, theme toggle on the right. The content column is capped

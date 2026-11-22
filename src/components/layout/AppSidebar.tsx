@@ -1,11 +1,9 @@
 import { X } from "lucide-react"
 import { Link, NavLink, useLocation } from "react-router"
-import { Avatar, AvatarFallback } from "@/components/ui/avatar"
 import { Button } from "@/components/ui/button"
 import {
   Sidebar,
   SidebarContent,
-  SidebarFooter,
   SidebarGroup,
   SidebarGroupContent,
   SidebarHeader,
@@ -15,7 +13,6 @@ import {
   SidebarRail,
   useSidebar,
 } from "@/components/ui/sidebar"
-import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip"
 import { findNavItem, navItems, type NavItem } from "@/config/navigation"
 
 /**
@@ -35,9 +32,6 @@ export function AppSidebar() {
         <NavGroup items={navItems.filter((i) => i.section === "secondary")} className="mt-auto" />
       </SidebarContent>
 
-      <SidebarFooter className="border-t border-sidebar-border">
-        <UserFooter />
-      </SidebarFooter>
 
       <SidebarRail />
     </Sidebar>
@@ -104,38 +98,5 @@ function NavGroup({ items, className }: { items: NavItem[]; className?: string }
         </SidebarMenu>
       </SidebarGroupContent>
     </SidebarGroup>
-  )
-}
-
-/** Placeholder identity until login exists (see PRODUCT.md). */
-function UserFooter() {
-  const { state, isMobile } = useSidebar()
-  const avatar = (
-    <Avatar className="size-8 rounded-lg">
-      <AvatarFallback className="rounded-lg bg-sidebar-accent text-xs font-medium text-sidebar-accent-foreground">
-        PT
-      </AvatarFallback>
-    </Avatar>
-  )
-
-  return (
-    <div className="flex items-center gap-2 rounded-md p-1 group-data-[collapsible=icon]:justify-center group-data-[collapsible=icon]:p-0">
-      {state === "collapsed" && !isMobile ? (
-        <Tooltip>
-          <TooltipTrigger asChild>
-            <span tabIndex={0} aria-label="Psycray Team, placeholder account" className="rounded-lg outline-none focus-visible:ring-2 focus-visible:ring-sidebar-ring">
-              {avatar}
-            </span>
-          </TooltipTrigger>
-          <TooltipContent side="right">Psycray Team · Placeholder account</TooltipContent>
-        </Tooltip>
-      ) : (
-        avatar
-      )}
-      <div className="grid min-w-0 leading-tight group-data-[collapsible=icon]:hidden">
-        <span className="truncate text-sm font-medium text-sidebar-accent-foreground">Psycray Team</span>
-        <span className="truncate text-xs text-muted-foreground">Placeholder account</span>
-      </div>
-    </div>
   )
 }

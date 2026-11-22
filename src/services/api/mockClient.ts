@@ -88,10 +88,6 @@ let activeVersionId = 1
 const mockHistory = new Map<string, ScoreHistoryEntry[]>()
 const active = () => mockVersions.find((v) => v.id === activeVersionId)!
 
-function requireAdmin(key: string) {
-  if (key.trim().length < 8) throw new ApiError("An ICP admin key is required for this action.", 401)
-}
-
 /** Same rules as the n8n rescoring nodes: saved evidence only, active version. */
 function rescoreRecord(record: CompanyResearchRecord, config: IcpConfig, configId: number) {
   const saved = record.synthesized_research?.icp_evidence
@@ -189,13 +185,7 @@ export const mockResearchApi: ResearchApi = {
     })
   },
 
-  async checkAdmin(adminKey) {
-    requireAdmin(adminKey)
-    return delay({ name: "Sample admin" })
-  },
-
-  async publishIcpConfig(adminKey, { config, baseVersionId, note }) {
-    requireAdmin(adminKey)
+  async publishIcpConfig({ config, baseVersionId, note, publishedBy }) {
     if (baseVersionId !== activeVersionId) {
       throw new ApiError("Someone published a newer version while you were editing. Reload to see it, then reapply your changes.", 409)
     }
@@ -212,7 +202,7 @@ export const mockResearchApi: ResearchApi = {
       config: next,
       note: note.trim() || null,
       change_summary: changes,
-      published_by: "Sample admin",
+      published_by: publishedBy.trim().slice(0, 60) || "Psycray team",
       published_at: new Date().toISOString(),
     }
     mockVersions.push(row)
@@ -220,8 +210,7 @@ export const mockResearchApi: ResearchApi = {
     return delay(row)
   },
 
-  async rescoreAll(adminKey) {
-    requireAdmin(adminKey)
+  async rescoreAll() {
     const { config } = active()
     const summary = { config_version: config.version, rescored: 0, unchanged: 0, up_to_date: 0, needs_refresh: [] as string[], changes: [] as { domain: string; previous: number | null; updated: number }[] }
     mockCompanies.forEach((record, i) => {

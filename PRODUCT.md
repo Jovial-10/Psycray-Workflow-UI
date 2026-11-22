@@ -51,7 +51,9 @@ it was calculated instead of being a number an LLM made up.
   always with human approval.
 - Terminology: ICP tiers are High Fit (≥ 80), Moderate Fit (≥ 55), Low Fit,
   and Needs Review. Criteria are scored met / not met / unknown.
-- Login is not built yet. The user shown in the shell is a placeholder.
+- No logins or user accounts, by decision: the app runs on Psycray's VPS and
+  access is restricted at the server. Anyone with access can research,
+  publish ICP versions and recalculate; a publish carries an optional name.
 
 ## Brand Commitments
 

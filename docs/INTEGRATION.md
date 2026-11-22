@@ -26,9 +26,9 @@ n8n webhooks (Header Auth)
                                         GET   /research/jobs     → recent requests (activity)
                                         POST  /research/rescore  → re-score saved evidence
                                         GET   /icp/config        → published ICP versions
-                                        POST  /icp/config        → publish a version (admin)
-                                        POST  /icp/rescore       → rescore saved companies (admin)
-                                        GET   /icp/admin, /icp/history
+                                        POST  /icp/config        → publish a version
+                                        POST  /icp/rescore       → rescore saved companies
+                                        GET   /icp/history       → a company's score history
                                         Error Trigger            → marks job failed
    ▼
 Neon Postgres                           company_research · research_jobs
@@ -141,18 +141,17 @@ items, versions), never written by the LLM. Every score is also appended to
 | Method | Path | Auth | Purpose |
 | --- | --- | --- | --- |
 | `GET` | `/icp/config` | app key | `{ profile, versions[] }`, newest first; `profile.active_version_id` is applied everywhere |
-| `GET` | `/icp/admin` | admin key | `{ name }` or 401 |
-| `POST` | `/icp/config` | admin key | `{ config, base_version_id, note }` → 201 `{ version }`; 400 invalid (`details[]`), 409 stale base, 401 |
-| `POST` | `/icp/rescore` | admin key | Rescore every saved company with the active version → `{ rescored, unchanged, up_to_date, needs_refresh[], changes[] }` |
+| `POST` | `/icp/config` | app key | `{ config, base_version_id, note, published_by? }` → 201 `{ version }`; 400 invalid (`details[]`), 409 stale base |
+| `POST` | `/icp/rescore` | app key | Rescore every saved company with the active version → `{ rescored, unchanged, up_to_date, needs_refresh[], changes[] }` |
 | `GET` | `/icp/history?domain=` | app key | Score history entries, newest first |
 
-**Admin keys.** Named keys in `icp_admins` (SHA-256 only); the browser sends
-`X-Psycray-Admin`, which the proxy passes through unchanged (nginx forwards
-request headers by default). The server validates every config
-(`validateConfig`) and assigns the version label; client-supplied labels are
-ignored. Published versions are immutable (DB trigger). To add an admin:
-`INSERT INTO icp_admins (name, key_hash) VALUES ('Name', encode(sha256(convert_to('<key>', 'UTF8')), 'hex'));`
-To revoke: set `revoked_at = now()`.
+**No logins or admin keys** (decided 2026-11-22; migration 004 removed the
+`icp_admins` table). Anyone who can reach the app can publish and recalculate;
+`published_by` is optional attribution typed in the publish dialog. The server
+still validates every config (`validateConfig`), assigns the version label
+(client-supplied labels are ignored) and refuses stale publishes (409).
+Published versions are immutable (DB trigger). Access is controlled at the
+server instead: see [Production](#production-vps).
 
 The frontend checks every response with zod (`src/services/api/schemas.ts`).
 Fields the LLM wrote are parsed leniently: a malformed value falls back to
@@ -240,5 +239,10 @@ server {
 }
 ```
 
-> Access control (Phase 2.1 requirement) is still to do. Until it's in place,
-> anyone who can reach the URL can start research.
+> **Access control happens here, not in the app.** The app has no logins
+> (your decision, 2026-11-22), so anyone who can reach the URL can run
+> research (spending Exa/OpenAI credits) and publish ICP versions. Restrict the
+> site at nginx: an IP allowlist for the office/VPN (`allow <office-ip>;
+> deny all;` in the `location /` and `location /api/` blocks), or HTTP basic
+> auth, or keep the VPS on a private network/VPN. The `X-Psycray-Key` header
+> stays: it stops anyone calling the n8n webhooks directly.

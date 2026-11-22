@@ -290,9 +290,6 @@ export const icpConfigStateSchema = z.object({
 /** Reply to `POST /api/icp/config`. */
 export const publishResponseSchema = z.object({ version: icpConfigVersion })
 
-/** Reply to `GET /api/icp/admin`. */
-export const adminSchema = z.object({ name: z.string() })
-
 /** Reply to `POST /api/icp/rescore`. */
 export const rescoreAllSchema = z.object({
   config_version: z.string(),

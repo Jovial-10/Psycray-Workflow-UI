@@ -1,9 +1,8 @@
 import { useEffect, useState } from "react"
-import { CircleCheck, LogOut, RotateCcw, RotateCw, ShieldCheck, Undo2 } from "lucide-react"
+import { CircleCheck, RotateCcw, RotateCw, Undo2 } from "lucide-react"
 import { useSearchParams } from "react-router"
 import { EmptyState } from "@/components/common/EmptyState"
 import { CriteriaCard } from "@/components/icp/CriteriaCard"
-import { AdminSignIn } from "@/components/icp/AdminSignIn"
 import { PreviewCard } from "@/components/icp/PreviewCard"
 import { PublishDialog } from "@/components/icp/PublishDialog"
 import { RecalculateCard } from "@/components/icp/RecalculateCard"
@@ -12,10 +11,8 @@ import { VersionsSheet } from "@/components/icp/VersionsSheet"
 import { WeightsCard } from "@/components/icp/WeightsCard"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
-import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog"
 import { Skeleton } from "@/components/ui/skeleton"
 import { useCompanies } from "@/hooks/useCompanies"
-import { useIcpAdmin } from "@/hooks/useIcpAdmin"
 import { useIcpConfig } from "@/hooks/useIcpConfig"
 import { hasEvidence, previewCompany, sameConfig } from "@/lib/icpStudio"
 import { DEFAULT_ICP_CONFIG, ICP_ALGORITHM_VERSION, validateConfig, type IcpConfig } from "@/lib/scoring/icpEngine"
@@ -30,9 +27,7 @@ const when = (iso: string) => new Date(iso).toLocaleString(undefined, { dateStyl
 export function IcpStudioPage() {
   const icp = useIcpConfig()
   const companies = useCompanies()
-  const { admin, signIn, signOut } = useIcpAdmin()
   const [params, setParams] = useSearchParams()
-  const [signInOpen, setSignInOpen] = useState(false)
   const [published, setPublished] = useState<IcpConfigVersion | null>(null)
 
   const active = icp.status === "ready" ? icp.config.versions.find((v) => v.id === icp.config.profile.active_version_id) ?? null : null
@@ -99,18 +94,6 @@ export function IcpStudioPage() {
           </p>
         </div>
         <div className="flex flex-wrap items-center gap-2">
-          {admin ? (
-            <Button variant="ghost" size="sm" onClick={signOut} title="Sign out of admin for this tab">
-              <ShieldCheck />
-              {admin.name}
-              <LogOut className="text-muted-foreground" />
-            </Button>
-          ) : (
-            <Button variant="ghost" size="sm" onClick={() => setSignInOpen(true)}>
-              <ShieldCheck />
-              Admin sign in
-            </Button>
-          )}
           <VersionsSheet
             versions={icp.config.versions}
             activeId={active.id}
@@ -131,8 +114,6 @@ export function IcpStudioPage() {
             draft={draft}
             errors={errors}
             dirty={dirty}
-            admin={admin}
-            onSignIn={signIn}
             onReload={icp.reload}
             onPublished={(v) => {
               setPublished(v)
@@ -197,22 +178,11 @@ export function IcpStudioPage() {
             publishedLabel={active.label}
             outdated={outdated}
             legacy={legacy}
-            adminKey={admin?.key ?? null}
-            onSignIn={() => setSignInOpen(true)}
             onDone={companies.reload}
           />
         </div>
       </div>
 
-      <Dialog open={signInOpen && !admin} onOpenChange={setSignInOpen}>
-        <DialogContent className="sm:max-w-md">
-          <DialogHeader>
-            <DialogTitle>Admin sign in</DialogTitle>
-            <DialogDescription>Anyone can edit and preview a draft. Publishing and recalculating need a named admin key.</DialogDescription>
-          </DialogHeader>
-          <AdminSignIn autoFocus onSignIn={signIn} />
-        </DialogContent>
-      </Dialog>
     </div>
   )
 }

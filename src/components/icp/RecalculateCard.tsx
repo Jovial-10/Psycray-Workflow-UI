@@ -13,21 +13,19 @@ interface Props {
   outdated: number
   /** Companies without evidence (need one research refresh). */
   legacy: number
-  adminKey: string | null
-  onSignIn: () => void
   /** Called after a successful run, so lists reload. */
   onDone: () => void
 }
 
 /** Rescore every saved company with the published version, from saved evidence. */
-export function RecalculateCard({ publishedLabel, outdated, legacy, adminKey, onSignIn, onDone }: Props) {
+export function RecalculateCard({ publishedLabel, outdated, legacy, onDone }: Props) {
   const [state, setState] = useState<{ status: "idle" | "running" | "done" | "error"; summary?: RescoreAllSummary; error?: string }>({ status: "idle" })
 
   async function run() {
-    if (!adminKey || state.status === "running") return
+    if (state.status === "running") return
     setState({ status: "running" })
     try {
-      const summary = await api.rescoreAll(adminKey)
+      const summary = await api.rescoreAll()
       setState({ status: "done", summary })
       onDone()
     } catch (err) {
@@ -50,16 +48,10 @@ export function RecalculateCard({ publishedLabel, outdated, legacy, adminKey, on
           {outdated === 0 ? "Every saved score already uses this version." : `${outdated} saved ${outdated === 1 ? "score uses" : "scores use"} an older version.`}
           {legacy > 0 && <span className="text-muted-foreground"> {legacy} need a research refresh first.</span>}
         </p>
-        {adminKey ? (
-          <Button variant="outline" size="sm" onClick={run} disabled={state.status === "running"}>
-            <Calculator className={state.status === "running" ? "animate-pulse" : undefined} />
-            {state.status === "running" ? "Recalculating…" : "Recalculate saved companies"}
-          </Button>
-        ) : (
-          <Button variant="outline" size="sm" onClick={onSignIn}>
-            Sign in as admin to recalculate
-          </Button>
-        )}
+        <Button variant="outline" size="sm" onClick={run} disabled={state.status === "running"}>
+          <Calculator className={state.status === "running" ? "animate-pulse" : undefined} />
+          {state.status === "running" ? "Recalculating…" : "Recalculate saved companies"}
+        </Button>
 
         {state.status === "error" && (
           <p role="alert" className="rounded-md border border-danger-border bg-danger-soft px-3 py-2 text-xs text-danger-foreground">

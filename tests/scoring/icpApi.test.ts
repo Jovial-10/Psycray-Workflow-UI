@@ -97,17 +97,22 @@ describe("POST /icp/rescore: recalculate saved companies", () => {
 describe("POST /icp/config: server-side validation before publishing", () => {
   const publish = (body: Json, active: Json = { profile_id: 1, slug: "psycray-default", active_version_id: 1, active_config: DEFAULT_ICP_CONFIG, max_version: 1 }) =>
     run(ICP_WORKFLOW, "Validate ICP Config", {
-      nodes: { "Publish ICP Request": [{ json: { body } }], "Authorize Admin": [{ json: { admin_id: 1, admin_name: "Test Admin" } }] },
+      nodes: { "Publish ICP Request": [{ json: { body } }] },
       input: [{ json: active }],
     })
 
   it("accepts a valid change and labels the next version", () => {
-    const out = publish({ base_version_id: 1, config: { ...DEFAULT_ICP_CONFIG, baseline: 10 }, note: "Try a baseline" })
+    const out = publish({ base_version_id: 1, config: { ...DEFAULT_ICP_CONFIG, baseline: 10 }, note: "Try a baseline", published_by: "  Test Person " })
     assert.equal(out.http_status, 201)
     assert.equal(out.label, "psycray-default-v2")
     assert.equal(out.version, 2)
-    assert.equal(out.published_by, "Test Admin")
+    assert.equal(out.published_by, "Test Person")
     assert.deepEqual(out.change_summary, [{ kind: "baseline", text: "Baseline 0 → 10" }])
+  })
+
+  it("publisher name is optional attribution, defaulting to 'Psycray team'", () => {
+    assert.equal(publish({ base_version_id: 1, config: { ...DEFAULT_ICP_CONFIG, baseline: 5 } }).published_by, "Psycray team")
+    assert.equal(publish({ base_version_id: 1, config: { ...DEFAULT_ICP_CONFIG, baseline: 5 }, published_by: "x".repeat(200) }).published_by.length, 60)
   })
 
   it("rejects weights that don't total 100", () => {
@@ -142,11 +147,11 @@ describe("persistence", () => {
     assert.match(sql, /BEFORE UPDATE OR DELETE ON icp_config_versions/)
   })
 
-  it("every protected ICP endpoint checks an admin key first", () => {
-    const wf = JSON.parse(readFileSync(ICP_WORKFLOW, "utf8")) as { connections: Json }
-    for (const hook of ["Publish ICP Request", "Rescore All Request", "Check Admin Request"]) {
-      const next = wf.connections[hook].main[0][0].node as string
-      assert.match(next, /^Authorize/, hook)
-    }
+  it("has no login or admin-key checks (access is controlled at the server)", () => {
+    const wf = readFileSync(ICP_WORKFLOW, "utf8")
+    assert.doesNotMatch(wf, /x-psycray-admin|icp_admins|Authorize/i)
+    const parsed = JSON.parse(wf) as { connections: Json }
+    assert.equal(parsed.connections["Publish ICP Request"].main[0][0].node, "Load Active Version")
+    assert.equal(parsed.connections["Rescore All Request"].main[0][0].node, "Load Saved Companies")
   })
 })

@@ -1,6 +1,5 @@
 import type { z } from "zod"
 import {
-  adminSchema,
   companyListSchema,
   icpConfigStateSchema,
   publishResponseSchema,
@@ -80,21 +79,17 @@ export const httpResearchApi: ResearchApi = {
     return request("/icp/config", icpConfigStateSchema)
   },
 
-  checkAdmin(adminKey) {
-    return request("/icp/admin", adminSchema, { headers: { "X-Psycray-Admin": adminKey } })
-  },
-
-  async publishIcpConfig(adminKey, { config, baseVersionId, note }) {
+  async publishIcpConfig({ config, baseVersionId, note, publishedBy }) {
     const { version } = await request("/icp/config", publishResponseSchema, {
       method: "POST",
-      headers: { "Content-Type": "application/json", "X-Psycray-Admin": adminKey },
-      body: JSON.stringify({ config, base_version_id: baseVersionId, note }),
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ config, base_version_id: baseVersionId, note, published_by: publishedBy }),
     })
     return version
   },
 
-  rescoreAll(adminKey) {
-    return request("/icp/rescore", rescoreAllSchema, { method: "POST", headers: { "X-Psycray-Admin": adminKey } })
+  rescoreAll() {
+    return request("/icp/rescore", rescoreAllSchema, { method: "POST" })
   },
 
   async getScoreHistory(domain) {

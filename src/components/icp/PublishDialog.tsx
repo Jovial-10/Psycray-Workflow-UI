@@ -7,7 +7,7 @@ import { Textarea } from "@/components/ui/textarea"
 import { describeConfigChanges, type IcpConfig } from "@/lib/scoring/icpEngine"
 import { api, ApiError } from "@/services/api"
 import type { IcpConfigVersion } from "@/types/research"
-import { AdminSignIn } from "./AdminSignIn"
+import { Input } from "@/components/ui/input"
 
 interface Props {
   active: IcpConfigVersion
@@ -15,17 +15,27 @@ interface Props {
   draft: IcpConfig
   errors: string[]
   dirty: boolean
-  admin: { key: string; name: string } | null
-  onSignIn: (key: string) => Promise<string>
   onPublished: (version: IcpConfigVersion) => void
   /** Reload published versions after a conflict. */
   onReload: () => void
 }
 
 /** Review the change, add a note and publish a new immutable version. */
-export function PublishDialog({ active, nextVersion, draft, errors, dirty, admin, onSignIn, onPublished, onReload }: Props) {
+const NAME_KEY = "psycray-publisher-name"
+
+function rememberedName(): string {
+  try {
+    return localStorage.getItem(NAME_KEY) ?? ""
+  } catch {
+    return ""
+  }
+}
+
+export function PublishDialog({ active, nextVersion, draft, errors, dirty, onPublished, onReload }: Props) {
   const [open, setOpen] = useState(false)
   const [note, setNote] = useState("")
+  // Attribution only (shown in version history); remembered on this browser for convenience
+  const [name, setName] = useState(rememberedName)
   const [state, setState] = useState<{ pending: boolean; error: string | null; details: string[]; conflict: boolean }>({
     pending: false,
     error: null,
@@ -36,10 +46,15 @@ export function PublishDialog({ active, nextVersion, draft, errors, dirty, admin
   const blocked = !dirty || errors.length > 0
 
   async function publish() {
-    if (!admin || blocked || state.pending) return
+    if (blocked || state.pending) return
     setState({ pending: true, error: null, details: [], conflict: false })
     try {
-      const version = await api.publishIcpConfig(admin.key, { config: draft, baseVersionId: active.id, note })
+      try {
+        localStorage.setItem(NAME_KEY, name.trim())
+      } catch {
+        // Storage unavailable: the name just isn't remembered
+      }
+      const version = await api.publishIcpConfig({ config: draft, baseVersionId: active.id, note, publishedBy: name })
       setState({ pending: false, error: null, details: [], conflict: false })
       setNote("")
       setOpen(false)
@@ -109,11 +124,18 @@ export function PublishDialog({ active, nextVersion, draft, errors, dirty, admin
             />
           </div>
 
-          {admin ? (
-            <p className="text-xs text-muted-foreground">Publishing as {admin.name}.</p>
-          ) : (
-            <AdminSignIn onSignIn={onSignIn} />
-          )}
+          <div className="space-y-1.5">
+            <Label htmlFor="icp-publisher">Your name</Label>
+            <Input
+              id="icp-publisher"
+              value={name}
+              maxLength={60}
+              autoComplete="name"
+              onChange={(e) => setName(e.target.value)}
+              placeholder="Optional, shown in version history"
+              className="md:text-sm"
+            />
+          </div>
 
           {state.error && (
             <div role="alert" className="rounded-md border border-danger-border bg-danger-soft px-3 py-2 text-xs text-danger-foreground">
@@ -138,7 +160,7 @@ export function PublishDialog({ active, nextVersion, draft, errors, dirty, admin
           <Button variant="outline" onClick={() => setOpen(false)}>
             Cancel
           </Button>
-          <Button onClick={publish} disabled={!admin || blocked || state.pending}>
+          <Button onClick={publish} disabled={blocked || state.pending}>
             {state.pending ? "Publishing…" : `Publish version ${nextVersion}`}
           </Button>
         </DialogFooter>

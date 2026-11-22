@@ -39,20 +39,15 @@ export interface ResearchApi {
   /** Published ICP versions (newest first) and which one is active. */
   getIcpConfig(): Promise<IcpConfigState>
 
-  /** Checks a named admin key; resolves to the admin's name. 401 when invalid. */
-  checkAdmin(adminKey: string): Promise<{ name: string }>
-
   /**
-   * Publishes a new immutable ICP version and makes it active (admin only).
+   * Publishes a new immutable ICP version and makes it active.
    * 409 when `baseVersionId` is no longer the active version.
+   * `publishedBy` is optional attribution, not authentication.
    */
-  publishIcpConfig(
-    adminKey: string,
-    input: { config: IcpConfig; baseVersionId: number; note: string },
-  ): Promise<IcpConfigVersion>
+  publishIcpConfig(input: { config: IcpConfig; baseVersionId: number; note: string; publishedBy: string }): Promise<IcpConfigVersion>
 
-  /** Rescores every saved company with the active version, from saved evidence (admin only). */
-  rescoreAll(adminKey: string): Promise<RescoreAllSummary>
+  /** Rescores every saved company with the active version, from saved evidence. */
+  rescoreAll(): Promise<RescoreAllSummary>
 
   /** A company's score history, newest first. */
   getScoreHistory(domain: string): Promise<ScoreHistoryEntry[]>
