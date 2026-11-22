@@ -78,6 +78,15 @@ Major changes and decisions, plus what comes next. Newest entries first.
 
 ## Log
 
+### 2026-11-22 · ICP assistant ("Describe your ideal customer") + archiving versions
+
+- **Panel in ICP Studio** (above Weights): type an instruction → *Propose changes* → review current vs proposed weights and baseline, other changes (industries, employee ranges before/after, requirements), notes to confirm, contradictions, unsupported parts, ignored invalid suggestions → optional simulation on a saved company → **Apply proposal** (updates the draft only), **Edit proposal** (change weights/baseline first), **Discard proposal**. Publishing stays the separate Publish step
+- **The AI only interprets.** `POST /icp/interpret` (ICP API) → gpt-4o, temperature 0, returns changes in a closed vocabulary. `src/lib/scoring/icpAssistant.ts` (generated into n8n like the engine) validates every change strictly (unknown ops/fields/values are rejected and listed, never applied), applies them with plain code, keeps unmentioned settings, flags two values for one setting, and refuses interpreted numbers that move the wrong way ("less important" but higher). Weights not totalling 100 are never normalised: the proposal shows the exact total and an exact suggested rebalance you can choose
+- **Limits:** 3–1,000 characters; 10 requests a minute and 150 a day across the app (`icp_assistant_log`, migration 005); model failures and malformed output → 502 with a plain message; no path from the assistant to any database write except the usage log
+- **Archiving** (your choice "a"): Versions sheet → Archive / Show archived / Restore. Archived versions are hidden and can't be loaded, but stay in the database for the scores that used them (`icp_version_archive`, migration 005). Version 1 and the active version can't be archived (API + DB trigger for v1)
+- **Live checks:** exact weights (115% → contradiction + rebalance), vague wording (direction guard caught "less important" proposed as 0% → 5%), requirements, prompt injection + unsupported (ignored / listed), too long (400), archive rules (400/400/404), full UI flow on live (2 AI calls; nothing published). 109 tests pass
+- **Sample mode** uses a small rule-based stand-in for the model (labelled in the panel), feeding the same validation code
+
 ### 2026-11-22 · Removed admin keys and the placeholder account
 
 - Your call: the app runs on Psycray's VPS, so no logins or admin keys. Publishing and "Recalculate saved companies" are open to anyone who can reach the app; the publish dialog asks for an optional name, shown in version history (remembered on that browser)

@@ -16,6 +16,8 @@ import { fileURLToPath } from "node:url"
 
 const root = join(dirname(fileURLToPath(import.meta.url)), "..")
 export const ENGINE_PATH = join(root, "src/lib/scoring/icpEngine.ts")
+const WEIGHTS_PATH = join(root, "src/lib/scoring/weights.ts")
+const ASSISTANT_PATH = join(root, "src/lib/scoring/icpAssistant.ts")
 export const AGENT_WORKFLOW = join(root, "n8n/workflows/psycray-research-agent-v2.json")
 export const API_WORKFLOW = join(root, "n8n/workflows/psycray-research-api.json")
 export const ICP_WORKFLOW = join(root, "n8n/workflows/psycray-icp-api.json")
@@ -27,18 +29,31 @@ export const GENERATED_NODES: [string, string, () => string][] = [
   [API_WORKFLOW, "Recalculate Score", () => rescoreNodeCode()],
   [ICP_WORKFLOW, "Rescore Saved Companies", () => rescoreAllNodeCode()],
   [ICP_WORKFLOW, "Validate ICP Config", () => validateConfigNodeCode()],
+  [ICP_WORKFLOW, "Prepare Instruction", () => prepareInstructionNodeCode()],
+  [ICP_WORKFLOW, "Build Proposal", () => buildProposalNodeCode()],
 ]
 
 const BANNER = "// ── GENERATED from src/lib/scoring/icpEngine.ts by `npm run sync:n8n`. Do not edit in n8n. ──"
 
-/** The engine as plain JavaScript with no `export` keywords. */
-export function engineJs(): string {
-  const js = stripTypeScriptTypes(readFileSync(ENGINE_PATH, "utf8"), { mode: "strip" })
+/** A module as plain JavaScript: types stripped, no `import` statements, no `export` keywords. */
+function moduleJs(path: string): string {
+  const js = stripTypeScriptTypes(readFileSync(path, "utf8"), { mode: "strip" })
   return js
+    .replace(/^import\s[\s\S]*?from\s+"[^"]+"\s*;?\s*$/gm, "")
     .replace(/^export\s+(?=(const|function|let|class)\b)/gm, "")
     .replace(/^export\s+(type|interface)\b[^\n]*$/gm, "")
     .replace(/\n{3,}/g, "\n\n")
     .trim()
+}
+
+/** The engine as plain JavaScript with no `export` keywords. */
+export function engineJs(): string {
+  return moduleJs(ENGINE_PATH)
+}
+
+/** Engine + weight helpers + assistant, for the ICP assistant's nodes. */
+function assistantJs(): string {
+  return [moduleJs(ENGINE_PATH), moduleJs(WEIGHTS_PATH), moduleJs(ASSISTANT_PATH)].join("\n\n")
 }
 
 /** Shared glue: the active published config (from SQL) or the default. */
@@ -244,6 +259,41 @@ return [{
     published_by: String(body.published_by || '').trim().slice(0, 60) || 'Psycray team',
   },
 }];
+`
+}
+
+/** ICP API · "Prepare Instruction": checks the request and builds the model prompt. No model call yet. */
+export function prepareInstructionNodeCode(): string {
+  return `${BANNER}
+${assistantJs()}
+
+// ── n8n glue ──────────────────────────────────────────────────────────
+const body = $input.first().json.body || {};
+const problem = checkInstruction(body.instruction);
+if (problem) return [{ json: { http_status: 400, error: problem } }];
+if (!body.config || typeof body.config !== 'object') return [{ json: { http_status: 400, error: 'Send the current draft configuration.' } }];
+const config = normalizeConfig(body.config);
+return [{ json: { http_status: 200, config, instruction_chars: body.instruction.trim().length, prompt: assistantPrompt(config, body.instruction) } }];
+`
+}
+
+/** ICP API · "Build Proposal": validates the model's output and applies it to the draft. Never saves. */
+export function buildProposalNodeCode(): string {
+  return `${BANNER}
+${assistantJs()}
+
+// ── n8n glue ──────────────────────────────────────────────────────────
+const reply = $input.first().json;
+if (reply.error) {
+  return [{ json: { http_status: 502, error: 'The assistant is unavailable right now. Try again in a minute, or edit the settings directly.' } }];
+}
+const text = reply.output?.[0]?.content?.[0]?.text || '';
+const parsed = parseAssistantOutput(text);
+if (!parsed.ok) {
+  return [{ json: { http_status: 502, error: parsed.error + ' Nothing was changed. Try rephrasing.' } }];
+}
+const current = $('Prepare Instruction').first().json.config;
+return [{ json: { http_status: 200, proposal: buildProposal(current, parsed.output) } }];
 `
 }
 

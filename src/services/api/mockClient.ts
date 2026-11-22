@@ -9,7 +9,9 @@ import {
   validateConfig,
   type IcpConfig,
 } from "@/lib/scoring/icpEngine"
+import { buildProposal, checkInstruction, parseAssistantOutput } from "@/lib/scoring/icpAssistant"
 import { mockCompanies } from "@/mocks/companies"
+import { sampleInterpret } from "@/mocks/sampleInterpreter"
 import { ago } from "@/mocks/time"
 import type { CompanyResearchRecord, IcpConfigVersion, ScoreHistoryEntry } from "@/types/research"
 import { parseStoredBreakdown } from "./schemas"
@@ -82,6 +84,7 @@ const mockVersions: IcpConfigVersion[] = [
     change_summary: [],
     published_by: "system",
     published_at: ago(21),
+    archived_at: null,
   },
 ]
 let activeVersionId = 1
@@ -204,6 +207,7 @@ export const mockResearchApi: ResearchApi = {
       change_summary: changes,
       published_by: publishedBy.trim().slice(0, 60) || "Psycray team",
       published_at: new Date().toISOString(),
+      archived_at: null,
     }
     mockVersions.push(row)
     activeVersionId = row.id
@@ -227,6 +231,24 @@ export const mockResearchApi: ResearchApi = {
       else summary.changes.push({ domain: record.domain, previous: out.previous, updated: out.updated.icp_score! })
     })
     return delay(summary)
+  },
+
+  /** Same proposal code as the n8n "Build Proposal" node; a rule-based stand-in replaces the model. */
+  async interpretIcp(instruction, draft) {
+    const problem = checkInstruction(instruction)
+    if (problem) throw new ApiError(problem, 400)
+    const parsed = parseAssistantOutput(sampleInterpret(instruction))
+    if (!parsed.ok) throw new ApiError(parsed.error, 502)
+    return delay(buildProposal(draft, parsed.output))
+  },
+
+  async archiveIcpVersion(versionId, archived) {
+    const v = mockVersions.find((x) => x.id === versionId)
+    if (!v) throw new ApiError("That version does not exist.", 404)
+    if (archived && v.version === 1) throw new ApiError("The original version (version 1) cannot be archived.", 400)
+    if (archived && v.id === activeVersionId) throw new ApiError("The active version cannot be archived. Publish another version first.", 400)
+    v.archived_at = archived ? new Date().toISOString() : null
+    await delay(null)
   },
 
   async getScoreHistory(domain) {

@@ -2,6 +2,7 @@ import { useEffect, useState } from "react"
 import { CircleCheck, RotateCcw, RotateCw, Undo2 } from "lucide-react"
 import { useSearchParams } from "react-router"
 import { EmptyState } from "@/components/common/EmptyState"
+import { AssistantPanel } from "@/components/icp/AssistantPanel"
 import { CriteriaCard } from "@/components/icp/CriteriaCard"
 import { PreviewCard } from "@/components/icp/PreviewCard"
 import { PublishDialog } from "@/components/icp/PublishDialog"
@@ -16,6 +17,7 @@ import { useCompanies } from "@/hooks/useCompanies"
 import { useIcpConfig } from "@/hooks/useIcpConfig"
 import { hasEvidence, previewCompany, sameConfig } from "@/lib/icpStudio"
 import { DEFAULT_ICP_CONFIG, ICP_ALGORITHM_VERSION, validateConfig, type IcpConfig } from "@/lib/scoring/icpEngine"
+import { apiMode } from "@/services/api"
 import type { IcpConfigVersion } from "@/types/research"
 
 const when = (iso: string) => new Date(iso).toLocaleString(undefined, { dateStyle: "medium", timeStyle: "short" })
@@ -54,6 +56,15 @@ export function IcpStudioPage() {
   const previewRecord = withEvidence.find((r) => r.domain === selectedDomain) ?? withEvidence[0] ?? null
   // Cheap (one engine run per side), so it is recomputed on every edit
   const preview = previewRecord && active && draft ? previewCompany(previewRecord, active.config, active.id, draft) : null
+  const selectCompany = (domain: string) =>
+    setParams(
+      (p) => {
+        const next = new URLSearchParams(p)
+        next.set("company", domain)
+        return next
+      },
+      { replace: true },
+    )
   const outdated = active
     ? withEvidence.filter((r) => r.icp_scoring?.config_version !== active.label || r.icp_scoring?.algorithm_version !== ICP_ALGORITHM_VERSION).length
     : 0
@@ -99,6 +110,7 @@ export function IcpStudioPage() {
             activeId={active.id}
             draftMatches={matching}
             onLoad={(v) => setDraft({ ...v.config, version: active.config.version })}
+            onChanged={icp.reload}
           />
           <Button variant="outline" size="sm" onClick={() => setDraft({ ...DEFAULT_ICP_CONFIG, version: active.config.version })} disabled={sameConfig(draft, DEFAULT_ICP_CONFIG)}>
             <RotateCcw />
@@ -147,6 +159,14 @@ export function IcpStudioPage() {
 
       <div className="grid grid-cols-[minmax(0,1fr)] items-start gap-6 lg:grid-cols-[minmax(0,1fr)_22rem]">
         <div className="min-w-0 space-y-6">
+          <AssistantPanel
+            draft={draft}
+            onApply={(config) => setDraft({ ...config, version: active.config.version })}
+            companies={withEvidence}
+            selectedDomain={previewRecord?.domain ?? null}
+            onSelectCompany={selectCompany}
+            sampleMode={apiMode === "mock"}
+          />
           <WeightsCard draft={draft} onChange={setDraft} previewCriteria={preview?.draft?.criteria ?? null} previewName={previewName} />
           <CriteriaCard draft={draft} onChange={setDraft} />
           <RequirementsCard draft={draft} onChange={setDraft} />
@@ -159,16 +179,7 @@ export function IcpStudioPage() {
               companies={withEvidence}
               legacyCount={legacy}
               record={previewRecord}
-              onSelect={(domain) =>
-                setParams(
-                  (p) => {
-                    const next = new URLSearchParams(p)
-                    next.set("company", domain)
-                    return next
-                  },
-                  { replace: true },
-                )
-              }
+              onSelect={selectCompany}
               preview={preview}
               dirty={dirty}
               publishedLabel={active.label}

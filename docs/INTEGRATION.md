@@ -29,6 +29,8 @@ n8n webhooks (Header Auth)
                                         POST  /icp/config        → publish a version
                                         POST  /icp/rescore       → rescore saved companies
                                         GET   /icp/history       → a company's score history
+                                        POST  /icp/interpret     → ICP assistant proposal (no save)
+                                        POST  /icp/archive       → archive / restore a version
                                         Error Trigger            → marks job failed
    ▼
 Neon Postgres                           company_research · research_jobs
@@ -144,6 +146,8 @@ items, versions), never written by the LLM. Every score is also appended to
 | `POST` | `/icp/config` | app key | `{ config, base_version_id, note, published_by? }` → 201 `{ version }`; 400 invalid (`details[]`), 409 stale base |
 | `POST` | `/icp/rescore` | app key | Rescore every saved company with the active version → `{ rescored, unchanged, up_to_date, needs_refresh[], changes[] }` |
 | `GET` | `/icp/history?domain=` | app key | Score history entries, newest first |
+| `POST` | `/icp/interpret` | app key | `{ instruction, config }` → `{ proposal }` (never saves). 400 bad instruction, 429 rate limited (10/min, 150/day), 502 model failed or returned invalid output |
+| `POST` | `/icp/archive` | app key | `{ version_id, archived }` → hide or restore a version. 400 for version 1 or the active version, 404 unknown |
 
 **No logins or admin keys** (decided 2026-11-22; migration 004 removed the
 `icp_admins` table). Anyone who can reach the app can publish and recalculate;
@@ -168,7 +172,7 @@ Agent** workflow is not modified. v2 is imported as a separate workflow.
 
 | # | Step | Where |
 | - | ---- | ----- |
-| 1 | Run [`n8n/sql/001_research_jobs.sql`](../n8n/sql/001_research_jobs.sql) [`002_icp_score_history.sql`](../n8n/sql/002_icp_score_history.sql) and [`003_icp_profiles.sql`](../n8n/sql/003_icp_profiles.sql) | Neon SQL editor |
+| 1 | Run [`n8n/sql/001_research_jobs.sql`](../n8n/sql/001_research_jobs.sql) [`002`](../n8n/sql/002_icp_score_history.sql), [`003`](../n8n/sql/003_icp_profiles.sql), [`004`](../n8n/sql/004_remove_admin_keys.sql) and [`005`](../n8n/sql/005_icp_archive_and_assistant.sql) | Neon SQL editor |
 | 2 | Create a **Header Auth** credential: name `X-Psycray-Key`, value a long random secret (e.g. `openssl rand -hex 32`) | n8n → Credentials |
 | 3 | Import [`psycray-research-api.json`](../n8n/workflows/psycray-research-api.json) | n8n → Import from File |
 | 4 | Import [`psycray-research-agent-v2.json`](../n8n/workflows/psycray-research-agent-v2.json) | n8n → Import from File |

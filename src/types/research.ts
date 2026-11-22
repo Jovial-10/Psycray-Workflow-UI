@@ -285,6 +285,8 @@ export interface IcpConfigVersion {
   change_summary: { kind: string; text: string }[]
   published_by: string
   published_at: string
+  /** Set when the version is archived: hidden from the list and not loadable, but kept for the scores that used it. */
+  archived_at: string | null
 }
 
 /** Reply to `GET /api/icp/config`. */

@@ -1,3 +1,4 @@
+import type { Proposal } from "@/lib/scoring/icpAssistant"
 import type { IcpConfig } from "@/lib/scoring/icpEngine"
 import type {
   CompanyList,
@@ -48,6 +49,16 @@ export interface ResearchApi {
 
   /** Rescores every saved company with the active version, from saved evidence. */
   rescoreAll(): Promise<RescoreAllSummary>
+
+  /**
+   * Asks the ICP assistant to read a natural-language instruction against
+   * the current draft. Returns a proposal only; nothing is saved or published.
+   * 400 bad instruction, 429 rate limited, 502 model failed or returned garbage.
+   */
+  interpretIcp(instruction: string, draft: IcpConfig): Promise<Proposal>
+
+  /** Archives (hides) or restores a version. Never deletes. Version 1 and the active version can't be archived. */
+  archiveIcpVersion(versionId: number, archived: boolean): Promise<void>
 
   /** A company's score history, newest first. */
   getScoreHistory(domain: string): Promise<ScoreHistoryEntry[]>

@@ -1,5 +1,6 @@
 import { z } from "zod"
 import { normalizeConfig, type IcpEvidence } from "@/lib/scoring/icpEngine"
+import type { Proposal } from "@/lib/scoring/icpAssistant"
 import type {
   CompanyResearchRecord,
   CustomerType,
@@ -279,6 +280,7 @@ const icpConfigVersion = z.object({
   change_summary: z.array(z.object({ kind: z.string(), text: z.string() })).nullable().catch(null).transform((v) => v ?? []),
   published_by: z.string(),
   published_at: z.string(),
+  archived_at: str.optional().transform((v) => v ?? null),
 })
 
 /** Reply to `GET /api/icp/config`. */
@@ -323,3 +325,32 @@ export const scoreHistorySchema = z.object({
     "score history entry",
   ),
 })
+
+/** Reply to `POST /api/icp/interpret`. Config fields are re-normalised; lists are kept to strings. */
+const changeText = z.object({ kind: z.string(), text: z.string() })
+export const proposalSchema = z
+  .object({
+    proposal: z.object({
+      requested: z.unknown().transform(normalizeConfig),
+      requestedTotal: z.number(),
+      rebalance: z
+        .union([
+          z.object({ config: z.unknown().transform(normalizeConfig), changes: strList }),
+          z.object({ error: z.string() }),
+        ])
+        .nullable()
+        .catch(null),
+      changes: z.array(changeText).catch([]),
+      errors: strList,
+      warnings: strList,
+      contradictions: strList,
+      unsupported: strList,
+      rejected: strList,
+      summary: z.string().catch(""),
+      applied: z.array(z.unknown()).catch([]),
+    }),
+  })
+  .transform(({ proposal }) => proposal as unknown as Proposal)
+
+/** Reply to `POST /api/icp/archive`. */
+export const archiveSchema = z.object({ version_id: z.number(), archived: z.boolean() })

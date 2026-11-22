@@ -55,3 +55,31 @@ export function redistribute(
   )
   return { weights: next, changes }
 }
+
+/**
+ * Keeps the `fixed` weights exactly as they are and scales every other
+ * weight in proportion so the total is 100. Used when several weights were
+ * set at once (e.g. by the ICP assistant). Error when it can't be done.
+ */
+export function fillToHundred(weights: Weights, fixed: ReadonlySet<CriterionKey>): Redistribution | { error: string } {
+  const keys = CRITERIA.map((c) => c.key)
+  const free = keys.filter((k) => !fixed.has(k))
+  const fixedSum = keys.filter((k) => fixed.has(k)).reduce((s, k) => s + weights[k], 0)
+  const remaining = 100 - fixedSum
+  if (remaining < 0) return { error: `The weights you set already total ${fixedSum}%, over 100%.` }
+  if (free.length === 0) return { error: `All five weights were set and they total ${fixedSum}%, not 100%.` }
+
+  const freeSum = free.reduce((s, k) => s + weights[k], 0)
+  const exact = free.map((k) => ({ k, v: freeSum > 0 ? (weights[k] / freeSum) * remaining : remaining / free.length }))
+  const floored = exact.map((e) => ({ ...e, n: Math.floor(e.v) }))
+  let left = remaining - floored.reduce((s, e) => s + e.n, 0)
+  for (const e of [...floored].sort((a, b) => b.v - b.n - (a.v - a.n))) {
+    if (left <= 0) break
+    e.n++
+    left--
+  }
+  const next: Weights = { ...weights }
+  for (const e of floored) next[e.k] = e.n
+  const changes = CRITERIA.filter((c) => next[c.key] !== weights[c.key]).map((c) => `${c.label} ${weights[c.key]}% → ${next[c.key]}%`)
+  return { weights: next, changes }
+}

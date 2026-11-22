@@ -155,3 +155,76 @@ describe("persistence", () => {
     assert.equal(parsed.connections["Rescore All Request"].main[0][0].node, "Load Saved Companies")
   })
 })
+
+describe("POST /icp/interpret: the assistant's n8n nodes", () => {
+  const prepare = (body: Json) => run(ICP_WORKFLOW, "Prepare Instruction", { nodes: {}, input: [{ json: { body } }] })
+  const build = (reply: Json, config: Json = DEFAULT_ICP_CONFIG) =>
+    run(ICP_WORKFLOW, "Build Proposal", { nodes: { "Prepare Instruction": [{ json: { config } }] }, input: [{ json: reply.json ?? reply }] })
+
+  it("rejects empty or over-long instructions before any model call", () => {
+    assert.equal(prepare({ instruction: "", config: DEFAULT_ICP_CONFIG }).http_status, 400)
+    assert.equal(prepare({ instruction: "x".repeat(1001), config: DEFAULT_ICP_CONFIG }).http_status, 400)
+    assert.equal(prepare({ instruction: "Set the baseline to 10" }).http_status, 400)
+  })
+
+  it("builds the prompt from the current draft", () => {
+    const out = prepare({ instruction: "Set the baseline to 10", config: { ...DEFAULT_ICP_CONFIG, baseline: 3 } })
+    assert.equal(out.http_status, 200)
+    assert.equal(out.instruction_chars, 22)
+    assert.match(out.prompt, /"baseline":3/)
+  })
+
+  it("turns a valid model reply into a proposal (nothing is saved)", () => {
+    const out = build(modelOutput({ changes: [{ op: "set_baseline", value: 10, interpreted: false }], ambiguities: [], contradictions: [], unsupported: [], summary: "Baseline to 10" }))
+    assert.equal(out.http_status, 200)
+    assert.equal(out.proposal.requested.baseline, 10)
+    assert.deepEqual(out.proposal.changes, [{ kind: "baseline", text: "Baseline 0 → 10" }])
+  })
+
+  it("malformed model output and model failures become understandable errors", () => {
+    assert.match(build(modelOutput("I think you should weight SaaS more.")).error, /wasn't valid JSON\. Nothing was changed/)
+    assert.equal(build({ error: { message: "429 from OpenAI" } }).http_status, 502)
+    assert.match(build({ error: { message: "timeout" } }).error, /unavailable/)
+  })
+
+  it("the rate limit runs before the model, and a model failure never crashes the request", () => {
+    const wf = JSON.parse(readFileSync(ICP_WORKFLOW, "utf8")) as { nodes: Json[]; connections: Json }
+    assert.equal(wf.connections["Is Instruction Valid?"].main[0][0].node, "Check Assistant Rate Limit")
+    assert.equal(wf.connections["Is Under Rate Limit?"].main[0][0].node, "Interpret ICP Instruction")
+    assert.equal(wf.connections["Is Under Rate Limit?"].main[1][0].node, "Respond 429 Rate Limited")
+    assert.equal(wf.nodes.find((n) => n.name === "Interpret ICP Instruction")!.onError, "continueRegularOutput")
+    // The assistant has no path to the database writes that publish or rescore
+    const reachable = new Set<string>()
+    const walk = (name: string) => {
+      if (reachable.has(name)) return
+      reachable.add(name)
+      for (const outs of wf.connections[name]?.main ?? []) for (const t of outs) walk(t.node)
+    }
+    walk("Interpret Instruction Request")
+    for (const write of ["Save ICP Version", "Save Rescored Companies"]) assert.ok(!reachable.has(write), write)
+  })
+})
+
+describe("POST /icp/archive", () => {
+  const check = (r: Json) =>
+    run(ICP_WORKFLOW, "Check Archive Result", { nodes: { "Archive Version Request": [{ json: { body: { version_id: 3 } } }] }, input: [{ json: r }] })
+
+  it("refuses version 1 and the active version, and 404s unknown versions", () => {
+    assert.match(check({ found: 1, version: 1, is_active: false, archive: true }).error, /original version/)
+    assert.match(check({ found: 1, version: 3, is_active: true, archive: true }).error, /active version cannot be archived/)
+    assert.equal(check({ found: 0, version: null, is_active: false, archive: true }).http_status, 404)
+  })
+
+  it("archives and restores other versions", () => {
+    assert.deepEqual(check({ found: 1, version: 3, is_active: false, archive: true }), { http_status: 200, version_id: 3, archived: true })
+    assert.equal(check({ found: 1, version: 3, is_active: false, archive: false }).archived, false)
+  })
+
+  it("never deletes a version, and version 1 is also guarded in the database", () => {
+    const wf = readFileSync(ICP_WORKFLOW, "utf8")
+    assert.doesNotMatch(wf, /DELETE FROM icp_config_versions/)
+    const sql = readFileSync(new URL("../../n8n/sql/005_icp_archive_and_assistant.sql", import.meta.url), "utf8")
+    assert.match(sql, /cannot be archived/)
+    assert.doesNotMatch(sql, /DROP TABLE|DROP COLUMN|DELETE FROM|TRUNCATE/i)
+  })
+})

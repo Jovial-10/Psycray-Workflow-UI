@@ -1,7 +1,9 @@
 import type { z } from "zod"
 import {
   companyListSchema,
+  archiveSchema,
   icpConfigStateSchema,
+  proposalSchema,
   publishResponseSchema,
   rescoreAllSchema,
   scoreHistorySchema,
@@ -90,6 +92,22 @@ export const httpResearchApi: ResearchApi = {
 
   rescoreAll() {
     return request("/icp/rescore", rescoreAllSchema, { method: "POST" })
+  },
+
+  interpretIcp(instruction, draft) {
+    return request("/icp/interpret", proposalSchema, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ instruction, config: draft }),
+    })
+  },
+
+  async archiveIcpVersion(versionId, archived) {
+    await request("/icp/archive", archiveSchema, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ version_id: versionId, archived }),
+    })
   },
 
   async getScoreHistory(domain) {
