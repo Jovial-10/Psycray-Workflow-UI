@@ -1,9 +1,16 @@
-import type {
-  CompanyResearchRecord,
-  CustomerType,
-  IcpCriterionScore,
-  IcpTier,
-} from "@/types/research"
+import {
+  evaluate,
+  normalizeEvidence,
+  toSummary,
+  type Basis,
+  type DigitalNeedType,
+  type GrowthSignalType,
+  type IcpEvidence,
+  type IndustryCategory,
+  type OwnerType,
+} from "@/lib/scoring/icpEngine"
+import { parseStoredBreakdown } from "@/services/api/schemas"
+import type { CompanyResearchRecord, CustomerType, IcpTier } from "@/types/research"
 import { ago } from "./time"
 
 /**
@@ -12,52 +19,71 @@ import { ago } from "./time"
  * of this as real research.
  *
  * Dates are relative to page load so "recent" metrics stay realistic.
- * Scores are built from the same criteria and points as the n8n
- * "ICP Scoring Logic" node, so score, tier and breakdown always agree.
+ * Scores come from the same engine n8n runs (src/lib/scoring/icpEngine.ts),
+ * fed with fictional evidence, so score, tier and breakdown always agree.
  */
 
 
-interface Criteria {
-  /** 35 = SaaS/technology, 30 = manufacturing/industrial/logistics, 0 = other */
-  industry: 35 | 30 | 0
-  digital: boolean
-  growth: boolean
+/** Fictional evidence for one mock company, in the classifier's terms. */
+interface EvidenceSpec {
+  category: IndustryCategory | null
+  employees?: number
+  digital?: { type: DigitalNeedType; basis: Basis; text: string }
+  growth?: { type: GrowthSignalType; text: string; daysAgo: number | null }[]
+  owner?: { type: OwnerType; basis: Basis; text: string }
 }
 
-/** Mirrors the n8n scoring node: baseline 20 + criteria, tiers at 80 / 55. */
-function score({ industry, digital, growth }: Criteria) {
-  const breakdown: IcpCriterionScore[] = [
-    { criterion: "Baseline", score: 20, max: 20, status: "met", reason: "Starting score for every researched company" },
+/** Normalised evidence per mock domain, for the mock "Recalculate score". */
+export const mockEvidence = new Map<string, IcpEvidence>()
+
+function buildEvidence(domain: string, daysAgo: number, spec: EvidenceSpec): IcpEvidence {
+  const site = `https://${domain}`
+  const growth = (spec.growth ?? []).map((g, i) => ({
+    type: g.type,
+    date: g.daysAgo === null ? null : ago(g.daysAgo).slice(0, 10),
+    about_target: true,
+    evidence: g.text,
+    source_url: `https://news.example/${domain.split(".")[0]}-${g.type}-${i}`,
+  }))
+  return normalizeEvidence(
     {
-      criterion: "Industry Fit",
-      score: industry,
-      max: 35,
-      status: industry ? "met" : "not_met",
-      reason:
-        industry === 35
-          ? "Core vertical: SaaS/Technology"
-          : industry === 30
-            ? "Target vertical: Manufacturing/Industrial/Logistics"
-            : "Not in a core or target vertical",
+      industry: spec.category && { category: spec.category, label: "", evidence: "From the company website", source: site },
+      employee_count_evidence: spec.employees
+        ? [{ value: spec.employees, evidence: `About ${spec.employees} employees`, source: `${site}/about` }]
+        : [],
+      digital_needs: spec.digital ? [{ ...spec.digital, evidence: spec.digital.text, source: site }] : [],
+      growth_signals: growth,
+      project_owners: spec.owner ? [{ ...spec.owner, evidence: spec.owner.text, source: `${site}/about` }] : [],
     },
     {
-      criterion: "Digital Opportunity",
-      score: digital ? 25 : 0,
-      max: 25,
-      status: digital ? "met" : "not_met",
-      reason: digital ? "Workflow, automation, portal or integration need found" : "No workflow or integration need found",
+      domain,
+      researched_at: ago(daysAgo),
+      external_urls: growth.map((g) => g.source_url),
+      unknowns: ["Annual revenue"],
     },
-    {
-      criterion: "Growth Signals",
-      score: growth ? 20 : 0,
-      max: 20,
-      status: growth ? "met" : "not_met",
-      reason: growth ? "Growth, hiring, funding or partnership signals found" : "No growth signals found",
-    },
-  ]
-  const total = breakdown.reduce((sum, c) => sum + c.score, 0)
-  const tier: IcpTier = total >= 80 ? "High Fit" : total >= 55 ? "Moderate Fit" : "Low Fit"
-  return { icp_score: total, icp_tier: tier, icp_breakdown: breakdown }
+  )
+}
+
+/**
+ * Scores mock evidence with the real engine. `previous` simulates an earlier
+ * research run, so the scorecard can show a before/after change.
+ */
+function scored(id: number, domain: string, daysAgo: number, spec: EvidenceSpec, previous?: EvidenceSpec) {
+  const prior = previous
+    ? evaluate(buildEvidence(domain, daysAgo + 14, previous), {
+        snapshot_id: `mock-${id}-a`,
+        calculated_at: ago(daysAgo + 14),
+      })
+    : null
+  const evidence = buildEvidence(domain, daysAgo, spec)
+  mockEvidence.set(domain, evidence)
+  const result = evaluate(evidence, {
+    snapshot_id: `mock-${id}`,
+    calculated_at: ago(daysAgo),
+    previous: prior && toSummary(prior),
+  })
+  const { criteria, scoring } = parseStoredBreakdown(result)
+  return { icp_score: result.score, icp_tier: result.tier as IcpTier, icp_breakdown: criteria, icp_scoring: scoring }
 }
 
 interface MockCompany {
@@ -73,16 +99,13 @@ interface MockCompany {
   hq: string
   customers?: CustomerType[]
   technologies?: string[]
-  /** Omit for "Needs Review" (synthesis was not valid JSON). */
-  criteria?: Criteria
+  evidence: EvidenceSpec
 }
 
 /** Compact builder for the bulk of the mock set. */
 function company(c: MockCompany): CompanyResearchRecord {
   const site = `https://${c.domain}`
-  const scoring = c.criteria
-    ? score(c.criteria)
-    : { icp_score: null, icp_tier: "Needs Review" as const, icp_breakdown: [] }
+  const scoring = scored(c.id, c.domain, c.daysAgo, c.evidence)
   return {
     id: c.id,
     domain: c.domain,
@@ -128,6 +151,7 @@ function unreachable(id: number, domain: string, daysAgo: number): CompanyResear
     icp_score: null,
     icp_tier: null,
     icp_breakdown: null,
+    icp_scoring: null,
     account_brief: null,
   }
 }
@@ -203,14 +227,29 @@ export const mockCompanies: CompanyResearchRecord[] = [
         "https://jobs.example/brightline-erp-specialist",
       ],
     },
-    icp_score: 95,
-    icp_tier: "High Fit",
-    icp_breakdown: [
-      { criterion: "Baseline", score: 20, max: 20, status: "met", reason: "Starting score for every researched company" },
-      { criterion: "Industry Fit", score: 30, max: 35, status: "met", reason: "Target vertical: Manufacturing/Industrial/Logistics" },
-      { criterion: "Digital Opportunity", score: 25, max: 25, status: "met", reason: "Workflow, automation, portal or integration need found" },
-      { criterion: "Growth Signals", score: 20, max: 20, status: "met", reason: "Growth, hiring, funding or partnership signals found" },
-    ],
+    ...scored(
+      1,
+      "brightline-fabrication.example",
+      0.2,
+      {
+        category: "manufacturing",
+        employees: 85,
+        digital: { type: "customer_portal", basis: "stated", text: "Quote requests are submitted as a downloadable PDF form" },
+        growth: [
+          { type: "expansion", text: "Opened a second production facility", daysAgo: 68 },
+          { type: "hiring", text: "Hiring an ERP integration specialist", daysAgo: 12 },
+        ],
+        owner: { type: "operations_leader", basis: "stated", text: "Dana Ruiz, VP of Operations" },
+      },
+      {
+        // The earlier run had not found the hiring signal yet
+        category: "manufacturing",
+        employees: 85,
+        digital: { type: "customer_portal", basis: "stated", text: "Quote requests are submitted as a downloadable PDF form" },
+        growth: [{ type: "expansion", text: "Opened a second production facility", daysAgo: 68 }],
+        owner: { type: "operations_leader", basis: "stated", text: "Dana Ruiz, VP of Operations" },
+      },
+    ),
     account_brief: `Account Brief: Brightline Fabrication
 
 Company Summary
@@ -272,14 +311,12 @@ Potential Psycray Service Opportunities
     sources: {
       urls: ["https://ledgerloop.example", "https://news.example/ledgerloop-partnership"],
     },
-    icp_score: 75,
-    icp_tier: "Moderate Fit",
-    icp_breakdown: [
-      { criterion: "Baseline", score: 20, max: 20, status: "met", reason: "Starting score for every researched company" },
-      { criterion: "Industry Fit", score: 35, max: 35, status: "met", reason: "Core vertical: SaaS/Technology" },
-      { criterion: "Digital Opportunity", score: 0, max: 25, status: "not_met", reason: "No workflow or integration need found" },
-      { criterion: "Growth Signals", score: 20, max: 20, status: "met", reason: "Growth, hiring, funding or partnership signals found" },
-    ],
+    ...scored(2, "ledgerloop.example", 1.1, {
+      category: "saas",
+      employees: 30,
+      growth: [{ type: "partnership", text: "Partnership with a core banking provider", daysAgo: 50 }],
+      owner: { type: "in_house_engineering", basis: "stated", text: "In-house engineering team" },
+    }),
     account_brief: `Account Brief: LedgerLoop
 
 Company Summary
@@ -297,7 +334,16 @@ SaaS platform automating accounts payable for credit unions. A new core-banking 
     products: ["Dispatch scheduling", "Technician mobile app"],
     hq: "Madison, WI",
     technologies: ["React", "Twilio", "QuickBooks API"],
-    criteria: { industry: 35, digital: true, growth: true },
+    evidence: {
+      category: "saas",
+      employees: 42,
+      digital: { type: "system_integration", basis: "stated", text: "Hiring integration engineers" },
+      growth: [
+        { type: "funding", text: "Raised a Series A", daysAgo: 40 },
+        { type: "hiring", text: "Hiring integration engineers", daysAgo: 9 },
+      ],
+      owner: { type: "technical_leader", basis: "stated", text: "Priya Shah, CTO" },
+    },
   }),
   company({
     id: 5,
@@ -310,7 +356,11 @@ SaaS platform automating accounts payable for credit unions. A new core-banking 
     products: ["Contract warehousing", "Last-mile delivery"],
     hq: "Indianapolis, IN",
     technologies: ["WordPress"],
-    criteria: { industry: 30, digital: true, growth: false },
+    evidence: {
+      category: "logistics",
+      employees: 120,
+      digital: { type: "customer_portal", basis: "stated", text: "Customers ask for a shipment-tracking portal" },
+    },
   }),
   company({
     id: 6,
@@ -323,7 +373,12 @@ SaaS platform automating accounts payable for credit unions. A new core-banking 
     products: ["Brand strategy", "Website design"],
     hq: "Charleston, SC",
     technologies: ["Webflow", "HubSpot"],
-    criteria: { industry: 0, digital: true, growth: true },
+    evidence: {
+      category: "agency",
+      employees: 18,
+      digital: { type: "custom_software", basis: "inferred", text: "Adding a development practice" },
+      growth: [{ type: "partnership", text: "Partnering with a headless CMS vendor", daysAgo: 30 }],
+    },
   }),
   company({
     id: 7,
@@ -336,7 +391,11 @@ SaaS platform automating accounts payable for credit unions. A new core-banking 
     products: ["General dentistry", "Orthodontics"],
     hq: "Boise, ID",
     customers: ["B2C"],
-    criteria: { industry: 0, digital: false, growth: true },
+    evidence: {
+      category: "healthcare",
+      employees: 140,
+      growth: [{ type: "expansion", text: "Opening two new offices", daysAgo: 21 }],
+    },
   }),
   company({
     id: 8,
@@ -349,6 +408,7 @@ SaaS platform automating accounts payable for credit unions. A new core-banking 
     products: ["Outdoor apparel", "Camping gear"],
     hq: "Bend, OR",
     customers: ["B2C", "B2B"],
+    evidence: { category: "retail_consumer" },
   }),
   unreachable(9, "bluewater-events.example", 8.3),
   company({
@@ -362,7 +422,12 @@ SaaS platform automating accounts payable for credit unions. A new core-banking 
     products: ["Industrial valves", "Actuation"],
     hq: "Tulsa, OK",
     technologies: ["Epicor"],
-    criteria: { industry: 30, digital: true, growth: false },
+    evidence: {
+      category: "industrial_supplier",
+      employees: 60,
+      digital: { type: "workflow_automation", basis: "stated", text: "Distributor orders arrive by fax and PDF" },
+      owner: { type: "operations_leader", basis: "inferred", text: "Operations manager listed on the contact page" },
+    },
   }),
   company({
     id: 11,
@@ -375,7 +440,10 @@ SaaS platform automating accounts payable for credit unions. A new core-banking 
     products: ["Yield analytics", "Field reporting"],
     hq: "Ames, IA",
     technologies: ["Python", "AWS"],
-    criteria: { industry: 35, digital: true, growth: false },
+    evidence: {
+      category: "saas",
+      digital: { type: "system_integration", basis: "inferred", text: "Integrations with equipment telemetry platforms" },
+    },
   }),
   company({
     id: 12,
@@ -388,7 +456,11 @@ SaaS platform automating accounts payable for credit unions. A new core-banking 
     products: ["Corrugated boxes", "Custom displays"],
     hq: "Dayton, OH",
     technologies: ["SAP Business One"],
-    criteria: { industry: 30, digital: false, growth: false },
+    evidence: {
+      category: "manufacturing",
+      employees: 400,
+      owner: { type: "in_house_engineering", basis: "stated", text: "In-house IT team" },
+    },
   }),
   company({
     id: 13,
@@ -401,7 +473,7 @@ SaaS platform automating accounts payable for credit unions. A new core-banking 
     products: ["Consumer banking", "Auto loans"],
     hq: "Lansing, MI",
     customers: ["B2C"],
-    criteria: { industry: 0, digital: false, growth: false },
+    evidence: { category: "financial_services", employees: 220 },
   }),
   company({
     id: 14,
@@ -414,6 +486,15 @@ SaaS platform automating accounts payable for credit unions. A new core-banking 
     products: ["Palletizing cells", "Fleet software"],
     hq: "Grand Rapids, MI",
     technologies: ["ROS", "Azure IoT"],
-    criteria: { industry: 35, digital: true, growth: true },
+    evidence: {
+      category: "manufacturing",
+      employees: 210,
+      digital: { type: "system_integration", basis: "stated", text: "Hiring for systems integration" },
+      growth: [
+        { type: "expansion", text: "Expanding into Mexico", daysAgo: 35 },
+        { type: "hiring", text: "Hiring for systems integration", daysAgo: null },
+      ],
+      owner: { type: "technical_leader", basis: "stated", text: "VP of Engineering" },
+    },
   }),
 ]

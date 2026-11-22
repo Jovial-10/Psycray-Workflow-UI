@@ -6,6 +6,8 @@
  * layer is needed when the real backend is connected.
  */
 
+import type { EvidenceRef, ScoreChange } from "@/lib/scoring/icpEngine"
+
 /* ------------------------------------------------------------------ */
 /* Input                                                               */
 /* ------------------------------------------------------------------ */
@@ -112,31 +114,52 @@ export interface SynthesizedResearch {
 
 /**
  * Tier thresholds: High ≥ 80, Moderate ≥ 55, otherwise Low.
- * "Needs Review" is emitted when the synthesis was not valid JSON.
+ * "Needs Review": under half the weighted criteria had evidence (scoring v2),
+ * or the synthesis was not valid JSON (legacy keyword scoring).
  */
 export type IcpTier = "High Fit" | "Moderate Fit" | "Low Fit" | "Needs Review"
 
 /**
- * One row of the ICP scorecard ("ICP Scoring Logic" → `icp_breakdown`).
- * `unknown` means there was not enough evidence to judge the criterion,
- * which is different from the company failing it (`not_met`).
+ * One row of the ICP scorecard. Produced by the scoring engine
+ * (src/lib/scoring/icpEngine.ts) in n8n.
+ * - `unknown`: no evidence, so not judged. Earns 0 points but is not a failure.
+ * - `partial`: some of the weight earned (e.g. an inferred need).
+ * - `conflicting`: sources disagree; scored on the lower-fit reading.
  */
 export interface IcpCriterionScore {
   criterion: string
   score: number
   max: number
-  status: "met" | "not_met" | "unknown"
+  status: "met" | "partial" | "not_met" | "unknown" | "conflicting"
   reason: string
+  /** Quotes and sources the criterion was judged on (scoring v2 only). */
+  evidence: EvidenceRef[]
+}
+
+/** How a score was produced, and how it compares with the one before it. */
+export interface IcpScoring {
+  /** "2.0.0" and later: evidence-based engine. "1-keyword": the original keyword rules. */
+  algorithm_version: string
+  config_version: string | null
+  /** Percent of the score per criterion key. */
+  weights: Record<string, number> | null
+  /** Share of the weight that had evidence (0–100). */
+  coverage: number | null
+  /** Score if every unknown criterion turned out fully met. */
+  max_possible: number | null
+  missing: string[]
+  /** Research run the evidence came from. */
+  snapshot_id: string | null
+  evidence_fingerprint: string | null
+  calculated_at: string | null
+  previous: { score: number | null; tier: string | null; calculated_at: string | null; algorithm_version: string } | null
+  change: ScoreChange | null
 }
 
 export interface IcpScore {
   /** 0–100, or null when scoring could not run. */
   score: number | null
   tier: IcpTier
-  /**
-   * Human-readable reasons, e.g. "Core vertical: SaaS/Technology (+35)".
-   * Produced by the workflow but not yet persisted to Postgres.
-   */
   rationale: string[]
 }
 
@@ -187,8 +210,10 @@ export interface CompanyResearchRecord {
   sources: { urls: string[] } | null
   icp_score: number | null
   icp_tier: IcpTier | null
-  /** Added in Phase 2. Null for rows researched before the migration. */
+  /** Scorecard rows. Null for rows researched before Phase 2. */
   icp_breakdown: IcpCriterionScore[] | null
+  /** Scoring metadata (versions, coverage, change). Null for legacy keyword scores. */
+  icp_scoring: IcpScoring | null
   account_brief: string | null
 }
 
@@ -235,6 +260,11 @@ export type ResearchJobSummary = Pick<ResearchJob, "job_id" | "status" | "input"
 export interface ResearchJobList {
   jobs: ResearchJobSummary[]
   source: "live" | "sample"
+}
+
+/** Reply to `POST /api/research/rescore`. */
+export interface RescoreResponse {
+  record: CompanyResearchRecord
 }
 
 /** Reply to `GET /api/research/status?id=…`. */

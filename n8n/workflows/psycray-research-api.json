@@ -1,5 +1,16 @@
 {
+  "id": "oRmS31cJqbOcTmQ4",
   "name": "Psycray Research API",
+  "description": null,
+  "active": true,
+  "activeVersionId": "497d8f90-0b4f-4416-b12c-7deed661dcaa",
+  "createdAt": "2026-11-10T04:34:36.475Z",
+  "updatedAt": "2026-11-22T03:04:47.832Z",
+  "isArchived": false,
+  "versionId": "497d8f90-0b4f-4416-b12c-7deed661dcaa",
+  "versionCounter": 5,
+  "sourceWorkflowId": null,
+  "triggerCount": 3,
   "nodes": [
     {
       "id": "f729e5c1-6453-4192-a99a-4ab47c69bc5f",
@@ -272,6 +283,157 @@
           "responseCode": 200
         }
       }
+    },
+    {
+      "id": "38b9ede8-75f3-4626-9462-b32e29c766a1",
+      "name": "Recalculate Score Request",
+      "webhookId": "8d486f47-aa87-4542-9a45-aafbd37c4638",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "position": [
+        0,
+        1008
+      ],
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "psycray/research/rescore",
+        "authentication": "headerAuth",
+        "responseMode": "responseNode",
+        "options": {}
+      },
+      "credentials": {
+        "httpHeaderAuth": {
+          "id": "7RkLwKAkSSYctcRB",
+          "name": "X-Psycray-Key"
+        }
+      }
+    },
+    {
+      "id": "a3f4fd8f-676b-40e8-8754-c0c33c75f609",
+      "name": "Load Saved Research",
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.7,
+      "position": [
+        224,
+        1008
+      ],
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "-- Saved research for one domain (one row even when missing).\nSELECT cr.domain, cr.icp_score, cr.icp_tier, cr.icp_breakdown, cr.synthesized_research\nFROM (SELECT 1) AS input\nLEFT JOIN company_research cr\n  ON cr.domain = $1\n AND cr.status = 'validated';",
+        "options": {
+          "queryReplacement": "={{ [ String($json.body?.domain || '').trim().toLowerCase().replace(/^https?:\\/\\//, '').replace(/^www\\./, '').split('/')[0] ] }}"
+        }
+      },
+      "credentials": {
+        "postgres": {
+          "id": "V1HMewWXgQBIMFpN",
+          "name": "Postgres account 6"
+        }
+      }
+    },
+    {
+      "id": "2928e08d-b18a-44aa-a030-c969bd248260",
+      "name": "Recalculate Score",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        448,
+        1008
+      ],
+      "parameters": {
+        "jsCode": "// ── GENERATED from src/lib/scoring/icpEngine.ts by `npm run sync:n8n`. Do not edit in n8n. ──\n/**\n * Psycray ICP scoring engine: the single source of truth for ICP scores.\n *\n * The same file runs in three places:\n *   - n8n Code nodes (\"ICP Scoring Logic\", \"Recalculate Score\"), type-stripped\n *     and embedded by `npm run sync:n8n` (scripts/sync-n8n-scoring.ts)\n *   - the regression tests (tests/scoring)\n *   - the frontend's mock data\n *\n * Rules:\n *   - The LLM only CLASSIFIES evidence into fixed categories, each with a\n *     quote and a source. It never produces numbers that reach the score.\n *   - `normalizeEvidence` turns that raw classification into canonical\n *     evidence (validated enums, verified sources, stable order).\n *   - `scoreCompany` is a pure function of (evidence, config). Same input,\n *     same output, every time. No clock, no randomness, no I/O.\n *   - Unknown is not failure: a criterion without evidence is \"unknown\",\n *     earns 0 points and is listed under missing information. The result\n *     reports how much of the weight was actually assessed (coverage).\n *\n * Constraints (so it can be pasted into an n8n Code node):\n *   - no imports, no globals beyond plain JS built-ins (no URL, no crypto)\n *   - only erasable TypeScript syntax\n */\n\nconst ICP_ALGORITHM_VERSION = \"2.0.0\"\n/** Version label for scores produced by the original keyword rules. */\nconst LEGACY_ALGORITHM_VERSION = \"1-keyword\"\n\n/* ------------------------------------------------------------------ */\n/* Configuration                                                       */\n/* ------------------------------------------------------------------ */\n\n                                                                                                                           \n\n                              \n          \n              \n                   \n                         \n                 \n            \n               \n                           \n                \n                        \n                     \n               \n                \n               \n           \n\n                             \n                         \n                        \n                     \n                     \n                          \n                    \n\n                                                                                                                    \n\n                                                                                                            \n\n                            \n                                                                        \n                 \n                                                                       \n                                       \n                                                                            \n                                                        \n                                                                              \n                                                                                   \n                                                                              \n                                                          \n                                                      \n                                                        \n                                                                             \n                            \n                                                               \n                             \n                                                                             \n                                                        \n                                           \n                                                                                 \n                            \n \n\n/**\n * Psycray's current model (weights from the sales team, 2026-11-21).\n * Sweet spot from the account-brief prompt: U.S. B2B organisations with\n * 10–250 employees (10–50 preferred): SaaS, manufacturers and industrial\n * suppliers, associations, agencies.\n */\nconst DEFAULT_ICP_CONFIG            = {\n  version: \"psycray-default-2026-11-21\",\n  weights: {\n    industry_fit: 20,\n    company_size: 15,\n    digital_opportunity: 30,\n    growth_signals: 25,\n    project_ownership: 10,\n  },\n  industryFit: {\n    saas: 1,\n    software: 1,\n    manufacturing: 1,\n    industrial_supplier: 1,\n    association: 1,\n    agency: 1,\n    logistics: 0.5,\n    professional_services: 0.5,\n    healthcare: 0.25,\n    financial_services: 0.25,\n    education: 0.25,\n    nonprofit: 0.25,\n  },\n  sizeBands: [\n    { min: 10, max: 50, fraction: 1, label: \"10–50 employees (sweet spot)\" },\n    { min: 51, max: 250, fraction: 0.7, label: \"51–250 employees (target range)\" },\n    { min: 251, max: 1000, fraction: 0.25, label: \"251–1,000 employees (above target)\" },\n    { min: 1, max: 9, fraction: 0.25, label: \"under 10 employees (below target)\" },\n    { min: 1001, max: null, fraction: 0, label: \"over 1,000 employees (enterprise)\" },\n  ],\n  digitalOpportunity: { stated: 1, inferred: 0.5 },\n  growthSignalStrength: {\n    hiring: 0.6,\n    funding: 0.6,\n    expansion: 0.6,\n    acquisition: 0.5,\n    partnership: 0.3,\n    product_launch: 0.3,\n  },\n  growthWindowMonths: 18,\n  undatedSignalFactor: 0.5,\n  projectOwnership: { stated: 1, inferred: 0.5 },\n  tiers: { high: 80, moderate: 55 },\n  minCoverageForTier: 50,\n}\n\nconst CRITERIA                                         = [\n  { key: \"industry_fit\", label: \"Industry Fit\" },\n  { key: \"company_size\", label: \"Company Size\" },\n  { key: \"digital_opportunity\", label: \"Digital Opportunity\" },\n  { key: \"growth_signals\", label: \"Growth Signals\" },\n  { key: \"project_ownership\", label: \"Project Ownership\" },\n]\n\nconst INDUSTRY_CATEGORIES                     = [\n  \"saas\", \"software\", \"manufacturing\", \"industrial_supplier\", \"association\", \"agency\", \"logistics\",\n  \"professional_services\", \"healthcare\", \"financial_services\", \"retail_consumer\", \"education\",\n  \"government\", \"nonprofit\", \"other\",\n]\nconst DIGITAL_NEED_TYPES                    = [\n  \"workflow_automation\", \"system_integration\", \"customer_portal\", \"custom_software\", \"legacy_modernization\", \"data_reporting\",\n]\nconst GROWTH_SIGNAL_TYPES                     = [\"hiring\", \"funding\", \"expansion\", \"acquisition\", \"partnership\", \"product_launch\"]\nconst OWNER_TYPES              = [\"technical_leader\", \"product_leader\", \"operations_leader\", \"in_house_engineering\"]\n\n/* ------------------------------------------------------------------ */\n/* Evidence                                                            */\n/* ------------------------------------------------------------------ */\n\n                                         \n\n/** A quote or paraphrase plus where it came from. */\n                              \n              \n                \n                                                                                               \n                   \n \n\n/** Canonical evidence the engine scores. Produced by `normalizeEvidence`. */\n                              \n                \n                                                                                            \n                       \n                                                                 \n                          \n                                                                                       \n                                                                        \n                                                                                 \n                   \n                          \n                       \n                         \n                         \n     \n                                                                    \n                           \n                    \n \n\n                                   \n                \n                       \n                                                                                                   \n                         \n                                                                            \n                     \n \n\n/* ------------------------------------------------------------------ */\n/* Result                                                              */\n/* ------------------------------------------------------------------ */\n\n                                                                                       \n\n                                  \n                   \n                   \n                                    \n               \n                                                    \n             \n                \n                                         \n                  \n                         \n                \n                         \n \n\n                              \n                               \n                              \n                      \n                                                            \n                   \n                                                                                                   \n \n\n                               \n                      \n                     \n                           \n                               \n                            \n                                     \n                              \n                                                                                                                             \n \n\n                                 \n               \n                                                                \n                             \n                                                             \n                  \n                                                               \n                      \n                   \n                           \n                        \n                                       \n                              \n                                                                             \n                            \n                              \n                               \n                            \n \n\n/* ------------------------------------------------------------------ */\n/* Helpers                                                             */\n/* ------------------------------------------------------------------ */\n\nfunction clean(value         , max = 400)         {\n  return typeof value === \"string\" ? value.replace(/\\s+/g, \" \").trim().slice(0, max) : \"\"\n}\n\nfunction oneOf                  (value         , allowed     )           {\n  const v = clean(value).toLowerCase().replace(/[\\s-]+/g, \"_\")\n  return (allowed            ).includes(v) ? (v     ) : null\n}\n\nfunction asArray(value         )            {\n  return Array.isArray(value) ? value : []\n}\n\nfunction obj(value         )                          {\n  return value && typeof value === \"object\" && !Array.isArray(value) ? (value                           ) : {}\n}\n\n/** Hostname without \"www.\", lower case. Regex only: n8n's sandbox has no URL global. */\nfunction hostOf(url        )         {\n  const m = clean(url).toLowerCase().match(/^(?:https?:\\/\\/)?([^/?#:\\s]+)/)\n  return m ? m[1].replace(/^www\\./, \"\") : \"\"\n}\n\nfunction normalizeUrl(url        )         {\n  return clean(url).toLowerCase().replace(/^https?:\\/\\//, \"\").replace(/^www\\./, \"\").replace(/[/#?]+$/, \"\")\n}\n\nfunction isOnDomain(host        , domain        )          {\n  return host !== \"\" && (host === domain || host.endsWith(\".\" + domain))\n}\n\nfunction ref(text         , source         , ctx                                            )              {\n  const src = clean(source, 300)\n  const host = hostOf(src)\n  const verified =\n    src !== \"\" &&\n    (isOnDomain(host, ctx.domain) || ctx.retrieved.has(normalizeUrl(src)) || src.toLowerCase() === ctx.domain)\n  return { text: clean(text), source: src, verified }\n}\n\nfunction toDate(value         )                {\n  const s = clean(value, 40)\n  if (!/^\\d{4}-\\d{2}(-\\d{2})?/.test(s)) return null\n  const t = Date.parse(s.length === 7 ? s + \"-01\" : s)\n  return Number.isNaN(t) ? null : new Date(t).toISOString().slice(0, 10)\n}\n\nfunction toCount(value         )                {\n  if (typeof value === \"number\" && Number.isFinite(value)) return Math.round(value)\n  if (typeof value === \"string\") {\n    const n = Number(value.replace(/[,\\s+]/g, \"\"))\n    return Number.isFinite(n) && value.trim() !== \"\" ? Math.round(n) : null\n  }\n  return null\n}\n\nfunction round1(n        )         {\n  return Math.round(n * 10) / 10\n}\n\nfunction byKey   (key                     ) {\n  return (a   , b   ) => (key(a) < key(b) ? -1 : key(a) > key(b) ? 1 : 0)\n}\n\nfunction uniqueBy   (items     , key                     )      {\n  const seen = new Set        ()\n  return items.filter((item) => {\n    const k = key(item)\n    if (seen.has(k)) return false\n    seen.add(k)\n    return true\n  })\n}\n\n/** JSON with sorted keys, so equal values always serialise identically. */\nfunction canonicalJson(value         )         {\n  if (Array.isArray(value)) return \"[\" + value.map(canonicalJson).join(\",\") + \"]\"\n  if (value && typeof value === \"object\") {\n    const o = value                           \n    return (\n      \"{\" +\n      Object.keys(o)\n        .filter((k) => o[k] !== undefined)\n        .sort()\n        .map((k) => JSON.stringify(k) + \":\" + canonicalJson(o[k]))\n        .join(\",\") +\n      \"}\"\n    )\n  }\n  return JSON.stringify(value ?? null)\n}\n\n/** Deterministic 64-bit content hash (cyrb53, hex). Not cryptographic. */\nfunction fingerprint(value         )         {\n  const str = canonicalJson(value)\n  let h1 = 0xdeadbeef\n  let h2 = 0x41c6ce57\n  for (let i = 0; i < str.length; i++) {\n    const ch = str.charCodeAt(i)\n    h1 = Math.imul(h1 ^ ch, 2654435761)\n    h2 = Math.imul(h2 ^ ch, 1597334677)\n  }\n  h1 = Math.imul(h1 ^ (h1 >>> 16), 2246822507) ^ Math.imul(h2 ^ (h2 >>> 13), 3266489909)\n  h2 = Math.imul(h2 ^ (h2 >>> 16), 2246822507) ^ Math.imul(h1 ^ (h1 >>> 13), 3266489909)\n  return (h2 >>> 0).toString(16).padStart(8, \"0\") + (h1 >>> 0).toString(16).padStart(8, \"0\")\n}\n\n/* ------------------------------------------------------------------ */\n/* Normalisation: raw LLM classification → canonical evidence          */\n/* ------------------------------------------------------------------ */\n\n/**\n * Validates and canonicalises the evidence classifier's JSON.\n * Unknown enum values are dropped, sources are checked against what the\n * research actually retrieved, duplicates are removed and every list is\n * sorted, so the LLM's ordering or phrasing of the same facts can't move\n * the score.\n */\nfunction normalizeEvidence(raw         , context                  )              {\n  const domain = hostOf(context.domain)\n  const retrieved = new Set(asArray(context.external_urls).map((u) => normalizeUrl(String(u))))\n  const ctx = { domain, retrieved }\n  const r = obj(raw)\n\n  const ind = obj(r.industry)\n  const category = oneOf(ind.category, INDUSTRY_CATEGORIES)\n  const industry = category\n    ? { category, label: clean(ind.label, 120), evidence: ref(ind.evidence, ind.source, ctx) }\n    : null\n\n  const employee_counts = uniqueBy(\n    asArray(r.employee_count_evidence)\n      .map((item) => {\n        const e = obj(item)\n        let min = toCount(e.min ?? e.value)\n        let max = toCount(e.max ?? e.value)\n        if (min === null && max !== null) min = max\n        if (max === null && min !== null) max = min\n        if (min === null || max === null || min < 1) return null\n        if (max < min) [min, max] = [max, min]\n        return { min, max, evidence: ref(e.evidence, e.source, ctx) }\n      })\n      .filter((x)                             => x !== null)\n      .sort(byKey((x) => `${String(x.min).padStart(9, \"0\")}|${String(x.max).padStart(9, \"0\")}|${x.evidence.source}`)),\n    (x) => `${x.min}|${x.max}|${x.evidence.source}`,\n  )\n\n  const digital_needs = uniqueBy(\n    asArray(r.digital_needs)\n      .map((item) => {\n        const e = obj(item)\n        const type = oneOf(e.type, DIGITAL_NEED_TYPES)\n        const basis = oneOf(e.basis, [\"stated\", \"inferred\"]           ) ?? \"inferred\"\n        return type ? { type, basis, evidence: ref(e.evidence, e.source, ctx) } : null\n      })\n      .filter((x)                             => x !== null)\n      .sort(byKey((x) => `${x.type}|${x.basis}|${x.evidence.source}|${x.evidence.text}`)),\n    (x) => `${x.type}|${x.basis}|${x.evidence.source}`,\n  )\n\n  const growth_signals = uniqueBy(\n    asArray(r.growth_signals)\n      .map((item) => {\n        const e = obj(item)\n        const type = oneOf(e.type, GROWTH_SIGNAL_TYPES)\n        if (!type) return null\n        return {\n          type,\n          date: toDate(e.date),\n          about_target: e.about_target === true,\n          evidence: ref(e.evidence, e.source_url ?? e.source, ctx),\n        }\n      })\n      .filter((x)                             => x !== null)\n      .sort(byKey((x) => `${x.type}|${x.date ?? \"\"}|${x.evidence.source}|${x.evidence.text}`)),\n    (x) => `${x.type}|${x.date ?? \"\"}|${x.evidence.source}`,\n  )\n\n  const owners = uniqueBy(\n    asArray(r.project_owners)\n      .map((item) => {\n        const e = obj(item)\n        const type = oneOf(e.type, OWNER_TYPES)\n        const basis = oneOf(e.basis, [\"stated\", \"inferred\"]           ) ?? \"inferred\"\n        return type ? { type, basis, evidence: ref(e.evidence, e.source, ctx) } : null\n      })\n      .filter((x)                             => x !== null)\n      .sort(byKey((x) => `${x.type}|${x.basis}|${x.evidence.source}|${x.evidence.text}`)),\n    (x) => `${x.type}|${x.basis}|${x.evidence.source}`,\n  )\n\n  const unknowns = uniqueBy(\n    asArray(context.unknowns)\n      .map((u) => clean(u, 200))\n      .filter(Boolean),\n    (u) => u.toLowerCase(),\n  ).sort()\n\n  return {\n    domain,\n    researched_at: clean(context.researched_at, 40),\n    external_results: retrieved.size,\n    industry,\n    employee_counts,\n    digital_needs,\n    growth_signals,\n    owners,\n    hq_country: clean(r.hq_country, 60) || null,\n    unknowns,\n  }\n}\n\n/* ------------------------------------------------------------------ */\n/* Scoring                                                             */\n/* ------------------------------------------------------------------ */\n\n                      \n                  \n                         \n                \n                         \n \n\nconst NEED_LABEL                                  = {\n  workflow_automation: \"workflow automation\",\n  system_integration: \"system integration\",\n  customer_portal: \"customer or partner portal\",\n  custom_software: \"custom software\",\n  legacy_modernization: \"legacy system modernisation\",\n  data_reporting: \"data and reporting\",\n}\n\nconst OWNER_LABEL                            = {\n  technical_leader: \"technical leader\",\n  product_leader: \"product leader\",\n  operations_leader: \"operations leader\",\n  in_house_engineering: \"in-house engineering or IT team\",\n}\n\nfunction assessIndustry(ev             , cfg           )             {\n  if (!ev.industry) {\n    return { fraction: 0, status: \"unknown\", reason: \"The company's own industry could not be determined\", evidence: [] }\n  }\n  const fraction = cfg.industryFit[ev.industry.category] ?? 0\n  const name = ev.industry.label || ev.industry.category.replace(/_/g, \" \")\n  const fit = fraction >= 1 ? \"core vertical\" : fraction > 0 ? \"adjacent vertical\" : \"outside target verticals\"\n  return {\n    fraction,\n    status: fraction >= 1 ? \"met\" : fraction > 0 ? \"partial\" : \"not_met\",\n    reason: `${name}: ${fit}`,\n    evidence: [ev.industry.evidence],\n  }\n}\n\nfunction bandFor(count        , cfg           ) {\n  return cfg.sizeBands.find((b) => count >= b.min && (b.max === null || count <= b.max)) ?? null\n}\n\nfunction assessSize(ev             , cfg           )             {\n  if (ev.employee_counts.length === 0) {\n    return { fraction: 0, status: \"unknown\", reason: \"No employee count found\", evidence: [] }\n  }\n  // Each report is a range; judge it by the band of both ends.\n  const bands = ev.employee_counts.flatMap((c) => [bandFor(c.min, cfg), bandFor(c.max, cfg)])\n  const labels = uniqueBy(bands.filter((b) => b !== null).map((b) => b .label), (l) => l)\n  const fraction = Math.min(...bands.map((b) => b?.fraction ?? 0))\n  const evidence = ev.employee_counts.map((c) => c.evidence)\n  const range = (c                              ) => (c.min === c.max ? `${c.min}` : `${c.min}–${c.max}`)\n  if (labels.length > 1) {\n    return {\n      fraction,\n      status: \"conflicting\",\n      reason: `Sources disagree (${ev.employee_counts.map(range).join(\" vs \")} employees); scored on the lower-fit reading`,\n      evidence,\n    }\n  }\n  return {\n    fraction,\n    status: fraction >= 1 ? \"met\" : fraction > 0 ? \"partial\" : \"not_met\",\n    reason: labels[0] ?? \"Employee count outside every configured band\",\n    evidence,\n  }\n}\n\nfunction assessDigital(ev             , cfg           )             {\n  const usable = ev.digital_needs.filter((n) => n.basis === \"inferred\" || n.evidence.verified)\n  if (usable.length === 0) {\n    return {\n      fraction: 0,\n      status: \"unknown\",\n      reason: \"No workflow, integration, portal or custom-software need found in the sources reviewed\",\n      evidence: [],\n    }\n  }\n  const stated = usable.filter((n) => n.basis === \"stated\")\n  const chosen = stated.length > 0 ? stated : usable\n  const fraction = stated.length > 0 ? cfg.digitalOpportunity.stated : cfg.digitalOpportunity.inferred\n  const types = uniqueBy(chosen.map((n) => NEED_LABEL[n.type]), (t) => t)\n  return {\n    fraction,\n    status: fraction >= 1 ? \"met\" : \"partial\",\n    reason: `${stated.length > 0 ? \"Stated\" : \"Inferred (not stated by a source)\"} need: ${types.join(\", \")}`,\n    evidence: chosen.map((n) => n.evidence),\n  }\n}\n\nfunction monthsBetween(fromIso        , toIso        )         {\n  return (Date.parse(toIso) - Date.parse(fromIso)) / (1000 * 60 * 60 * 24 * 30.4375)\n}\n\nfunction assessGrowth(ev             , cfg           )             {\n  const about = ev.growth_signals.filter((s) => s.about_target)\n  const qualifying = about.filter((s) => {\n    if (!s.evidence.verified) return false\n    if (s.date === null) return true\n    const age = monthsBetween(s.date, ev.researched_at)\n    return age <= cfg.growthWindowMonths && age >= -1\n  })\n  if (qualifying.length === 0) {\n    if (ev.external_results === 0) {\n      return { fraction: 0, status: \"unknown\", reason: \"No external sources were found to check for growth\", evidence: [] }\n    }\n    const excluded = ev.growth_signals.length - qualifying.length\n    return {\n      fraction: 0,\n      status: about.length > 0 ? \"not_met\" : \"unknown\",\n      reason:\n        about.length > 0\n          ? `No verified growth signal in the last ${cfg.growthWindowMonths} months`\n          : `No growth signal about this company was found${excluded > 0 ? ` (${excluded} about other companies or unverifiable, excluded)` : \"\"}`,\n      evidence: [],\n    }\n  }\n  // Strongest signal per type counts once; dated beats undated.\n  const best = new Map                                                                             ()\n  for (const s of qualifying) {\n    const strength = cfg.growthSignalStrength[s.type] * (s.date === null ? cfg.undatedSignalFactor : 1)\n    const current = best.get(s.type)\n    if (!current || strength > current.strength) best.set(s.type, { strength, signal: s })\n  }\n  const picked = [...best.values()].sort(byKey((x) => x.signal.type))\n  const fraction = Math.min(1, picked.reduce((sum, x) => sum + x.strength, 0))\n  return {\n    fraction,\n    status: fraction >= 1 ? \"met\" : \"partial\",\n    reason: `Verified signals: ${picked.map((x) => x.signal.type.replace(/_/g, \" \") + (x.signal.date ? ` (${x.signal.date})` : \" (undated)\")).join(\", \")}`,\n    evidence: picked.map((x) => x.signal.evidence),\n  }\n}\n\nfunction assessOwnership(ev             , cfg           )             {\n  const usable = ev.owners.filter((o) => o.basis === \"inferred\" || o.evidence.verified)\n  if (usable.length === 0) {\n    return { fraction: 0, status: \"unknown\", reason: \"No one identified who would own a technology project\", evidence: [] }\n  }\n  const stated = usable.filter((o) => o.basis === \"stated\")\n  const chosen = stated.length > 0 ? stated : usable\n  const fraction = stated.length > 0 ? cfg.projectOwnership.stated : cfg.projectOwnership.inferred\n  return {\n    fraction,\n    status: fraction >= 1 ? \"met\" : \"partial\",\n    reason: `${stated.length > 0 ? \"Identified\" : \"Likely (inferred)\"}: ${uniqueBy(chosen.map((o) => OWNER_LABEL[o.type]), (t) => t).join(\", \")}`,\n    evidence: chosen.map((o) => o.evidence),\n  }\n}\n\nconst ASSESSORS                                                                        = {\n  industry_fit: assessIndustry,\n  company_size: assessSize,\n  digital_opportunity: assessDigital,\n  growth_signals: assessGrowth,\n  project_ownership: assessOwnership,\n}\n\n/** Pure: identical (evidence, config) always gives an identical result. */\nfunction scoreCompany(evidence             , config            = DEFAULT_ICP_CONFIG)                 {\n  const totalWeight = CRITERIA.reduce((sum, c) => sum + config.weights[c.key], 0)\n  if (totalWeight !== 100) throw new Error(`ICP weights must sum to 100 (got ${totalWeight})`)\n\n  const criteria                    = CRITERIA.map(({ key, label }) => {\n    const a = ASSESSORS[key](evidence, config)\n    const weight = config.weights[key]\n    const fraction = Math.max(0, Math.min(1, a.fraction))\n    return {\n      key,\n      criterion: label,\n      score: round1(weight * fraction),\n      max: weight,\n      weight,\n      fraction: Math.round(fraction * 1000) / 1000,\n      status: a.status,\n      reason: a.reason,\n      evidence: a.evidence,\n    }\n  })\n\n  const score = Math.round(criteria.reduce((sum, c) => sum + c.score, 0))\n  const unknownWeight = criteria.filter((c) => c.status === \"unknown\").reduce((sum, c) => sum + c.weight, 0)\n  const coverage = 100 - unknownWeight\n  const tier                         =\n    coverage < config.minCoverageForTier\n      ? \"Needs Review\"\n      : score >= config.tiers.high\n        ? \"High Fit\"\n        : score >= config.tiers.moderate\n          ? \"Moderate Fit\"\n          : \"Low Fit\"\n\n  const missing = [\n    ...criteria.filter((c) => c.status === \"unknown\").map((c) => `${c.criterion}: ${c.reason}`),\n    ...evidence.unknowns,\n  ]\n\n  return {\n    score,\n    tier,\n    criteria,\n    coverage,\n    max_possible: Math.round(score + unknownWeight),\n    missing,\n    algorithm_version: ICP_ALGORITHM_VERSION,\n    config_version: config.version,\n    weights: { ...config.weights },\n    evidence_fingerprint: fingerprint(evidence),\n    snapshot_id: null,\n    calculated_at: null,\n    previous: null,\n    change: null,\n  }\n}\n\n/* ------------------------------------------------------------------ */\n/* Comparison: previous score → new score                              */\n/* ------------------------------------------------------------------ */\n\n/**\n * Reduces any stored score (new engine or the legacy keyword rules) to the\n * fields needed for a comparison. Returns null when there is nothing to compare.\n */\nfunction summarizeStored(stored         , storedScore          , storedTier          )                      {\n  const s = obj(stored)\n  const criteria = asArray(s.criteria)\n    .map((c) => obj(c))\n    .filter((c) => typeof c.criterion === \"string\" && typeof c.score === \"number\")\n    .map((c) => ({\n      key: (typeof c.key === \"string\" ? c.key : undefined)                            ,\n      criterion: c.criterion          ,\n      score: c.score          ,\n      max: typeof c.max === \"number\" ? c.max : 0,\n      status: typeof c.status === \"string\" ? c.status : \"unknown\",\n      evidence: asArray(c.evidence).map((e) => obj(e)                          ),\n    }))\n  const score = typeof s.score === \"number\" ? s.score : typeof storedScore === \"number\" ? storedScore : null\n  if (score === null && criteria.length === 0) return null\n  return {\n    score,\n    tier: typeof s.tier === \"string\" ? s.tier : typeof storedTier === \"string\" ? storedTier : null,\n    algorithm_version: typeof s.algorithm_version === \"string\" ? s.algorithm_version : LEGACY_ALGORITHM_VERSION,\n    config_version: typeof s.config_version === \"string\" ? s.config_version : null,\n    snapshot_id: typeof s.snapshot_id === \"string\" ? s.snapshot_id : null,\n    evidence_fingerprint: typeof s.evidence_fingerprint === \"string\" ? s.evidence_fingerprint : null,\n    calculated_at: typeof s.calculated_at === \"string\" ? s.calculated_at : null,\n    criteria,\n  }\n}\n\nfunction toSummary(result                )               {\n  return {\n    score: result.score,\n    tier: result.tier,\n    algorithm_version: result.algorithm_version,\n    config_version: result.config_version,\n    snapshot_id: result.snapshot_id,\n    evidence_fingerprint: result.evidence_fingerprint,\n    calculated_at: result.calculated_at,\n    criteria: result.criteria.map((c) => ({\n      key: c.key,\n      criterion: c.criterion,\n      score: c.score,\n      max: c.max,\n      status: c.status,\n      evidence: c.evidence,\n    })),\n  }\n}\n\nfunction fmtDelta(n        )         {\n  const v = round1(n)\n  return (v > 0 ? \"+\" : \"\") + v\n}\n\nconst evidenceKey = (e             ) => `${e.text.toLowerCase()}|${e.source.toLowerCase()}`\n\n/**\n * Explains a score change using only the recorded differences: versions,\n * evidence fingerprint, per-criterion points, statuses and evidence items.\n */\nfunction compareScores(previous                     , next                )                     {\n  if (!previous) return null\n  const reasons           = []\n  const legacy = previous.algorithm_version === LEGACY_ALGORITHM_VERSION\n\n  if (legacy) {\n    reasons.push(\n      \"The previous score used the legacy keyword rules; this score uses evidence-based scoring \" +\n        `v${next.algorithm_version}, so criterion points are not directly comparable.`,\n    )\n  } else {\n    if (previous.algorithm_version !== next.algorithm_version) {\n      reasons.push(`Scoring algorithm changed from v${previous.algorithm_version} to v${next.algorithm_version}.`)\n    }\n    if (previous.config_version !== next.config_version) {\n      reasons.push(`ICP configuration changed from \"${previous.config_version}\" to \"${next.config_version}\".`)\n    }\n  }\n\n  const criteria = next.criteria.map((c) => {\n    const prev =\n      previous.criteria.find((p) => p.key === c.key) ??\n      previous.criteria.find((p) => p.criterion.toLowerCase() === c.criterion.toLowerCase())\n    return { now: c, prev }\n  })\n\n  if (!legacy) {\n    for (const { now, prev } of criteria) {\n      const before = prev?.score ?? 0\n      const delta = round1(now.score - before)\n      if (delta === 0 && prev && prev.status === now.status) continue\n      const prevKeys = new Set((prev?.evidence ?? []).map(evidenceKey))\n      const nowKeys = new Set(now.evidence.map(evidenceKey))\n      const added = now.evidence.filter((e) => !prevKeys.has(evidenceKey(e)))\n      const removed = (prev?.evidence ?? []).filter((e) => !nowKeys.has(evidenceKey(e)))\n      const parts           = []\n      if (added.length) parts.push(`new evidence: ${added.map((e) => `\"${e.text}\"${e.source ? ` (${e.source})` : \"\"}`).join(\"; \")}`)\n      if (removed.length) parts.push(`evidence no longer found: ${removed.map((e) => `\"${e.text}\"`).join(\"; \")}`)\n      if (prev && prev.status !== now.status) parts.push(`status ${prev.status.replace(/_/g, \" \")} → ${now.status.replace(/_/g, \" \")}`)\n      if (parts.length === 0 && delta !== 0) parts.push(\"same evidence, different weighting\")\n      if (delta === 0 && parts.length === 0) continue\n      reasons.push(`${now.criterion} ${fmtDelta(delta)} (${round1(before)} → ${now.score}): ${parts.join(\"; \")}.`)\n    }\n    if (reasons.length === 0) {\n      reasons.push(\n        previous.evidence_fingerprint === next.evidence_fingerprint\n          ? \"Evidence and configuration unchanged; the score is identical.\"\n          : \"The research wording changed, but the scored evidence did not move any criterion.\",\n      )\n    }\n  }\n\n  const delta = previous.score === null ? null : round1(next.score - previous.score)\n  return {\n    previous_score: previous.score,\n    updated_score: next.score,\n    delta,\n    reasons,\n    criteria: criteria.map(({ now, prev }) => ({\n      criterion: now.criterion,\n      previous: prev ? prev.score : null,\n      updated: now.score,\n      delta: prev ? round1(now.score - prev.score) : null,\n    })),\n  }\n}\n\n/**\n * Score evidence, stamp run metadata and compare with the previous score.\n * The single entry point used by n8n for both fresh research and recalculation.\n */\nfunction evaluate(\n  evidence             ,\n  options   \n                      \n                              \n                         \n                                  \n   ,\n)                 {\n  const result = scoreCompany(evidence, options.config ?? DEFAULT_ICP_CONFIG)\n  result.snapshot_id = options.snapshot_id\n  result.calculated_at = options.calculated_at\n  const previous = options.previous ?? null\n  result.previous = previous\n  result.change = compareScores(previous, result)\n  return result\n}\n\n// ── n8n glue ──────────────────────────────────────────────────────────\nconst row = $input.first().json;\nif (!row.domain) {\n  return [{ json: { http_status: 404, error: 'No saved research for this domain.' } }];\n}\nconst evidence = row.synthesized_research && row.synthesized_research.icp_evidence;\nif (!evidence) {\n  return [{ json: { http_status: 409, error: 'This research predates evidence-based scoring. Refresh it once to collect scoring evidence.' } }];\n}\n\nconst previous = summarizeStored(row.icp_breakdown, row.icp_score, row.icp_tier);\nconst result = evaluate(evidence, {\n  config: DEFAULT_ICP_CONFIG,\n  // Same research snapshot: recalculation never gathers new evidence.\n  snapshot_id: (previous && previous.snapshot_id) || null,\n  calculated_at: $now.toUTC().toISO(),\n  previous,\n});\n\nreturn [{ json: { http_status: 200, domain: row.domain, icp_score: result.score, icp_tier: result.tier, icp_breakdown: result, icp_evidence: evidence } }];\n"
+      }
+    },
+    {
+      "id": "025f0047-2bfb-400e-b122-a55d5c9db346",
+      "name": "Was Score Recalculated?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.3,
+      "position": [
+        672,
+        1008
+      ],
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "loose",
+            "version": 3
+          },
+          "conditions": [
+            {
+              "id": "813c53dc-beaa-4e47-af73-0aa4ccec9314",
+              "leftValue": "={{ $json.http_status }}",
+              "rightValue": 200,
+              "operator": {
+                "type": "number",
+                "operation": "equals"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "looseTypeValidation": true,
+        "options": {}
+      }
+    },
+    {
+      "id": "1e3eb2a8-e115-4a3d-b72f-85dceaa39257",
+      "name": "Save Recalculated Score",
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.7,
+      "position": [
+        896,
+        912
+      ],
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "-- Save the recalculated score and append it to the history.\n-- updated_at is left alone: it is the research date, not the scoring date.\nWITH updated AS (\n  UPDATE company_research\n  SET icp_score = $2, icp_tier = $3, icp_breakdown = $4::jsonb\n  WHERE domain = $1 AND status = 'validated'\n  RETURNING *\n), history AS (\n  INSERT INTO icp_score_history\n    (domain, trigger, score, tier, algorithm_version, config_version, snapshot_id,\n     evidence_fingerprint, result, evidence, calculated_at)\n  SELECT domain, 'recalculate', $2, $3, $5, $6, $7, $8, $4::jsonb, $9::jsonb, $10::timestamptz\n  FROM updated\n)\nSELECT to_jsonb(updated) AS record FROM updated;",
+        "options": {
+          "queryReplacement": "={{ [ $json.domain, $json.icp_score, $json.icp_tier, JSON.stringify($json.icp_breakdown), $json.icp_breakdown.algorithm_version, $json.icp_breakdown.config_version, $json.icp_breakdown.snapshot_id, $json.icp_breakdown.evidence_fingerprint, JSON.stringify($json.icp_evidence), $json.icp_breakdown.calculated_at ] }}"
+        }
+      },
+      "credentials": {
+        "postgres": {
+          "id": "V1HMewWXgQBIMFpN",
+          "name": "Postgres account 6"
+        }
+      }
+    },
+    {
+      "id": "8b6e740c-a647-4e45-886b-a7a6fbe829b0",
+      "name": "Respond 200 Rescored",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.1,
+      "position": [
+        1120,
+        912
+      ],
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={{ { record: $json.record } }}",
+        "options": {
+          "responseCode": 200
+        }
+      }
+    },
+    {
+      "id": "53ba7f54-e72f-4bfe-9726-9ae1814c1f8c",
+      "name": "Respond Rescore Error",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.1,
+      "position": [
+        896,
+        1104
+      ],
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={{ { error: $json.error } }}",
+        "options": {
+          "responseCode": "={{ $json.http_status }}"
+        }
+      }
     }
   ],
   "connections": {
@@ -369,12 +531,704 @@
           }
         ]
       ]
+    },
+    "Recalculate Score Request": {
+      "main": [
+        [
+          {
+            "node": "Load Saved Research",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Load Saved Research": {
+      "main": [
+        [
+          {
+            "node": "Recalculate Score",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Recalculate Score": {
+      "main": [
+        [
+          {
+            "node": "Was Score Recalculated?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Was Score Recalculated?": {
+      "main": [
+        [
+          {
+            "node": "Save Recalculated Score",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Respond Rescore Error",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Save Recalculated Score": {
+      "main": [
+        [
+          {
+            "node": "Respond 200 Rescored",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
     }
   },
+  "nodeGroups": [],
   "settings": {
     "executionOrder": "v1",
     "binaryMode": "separate",
     "availableInMCP": true
   },
-  "active": false
+  "staticData": null,
+  "pinData": {},
+  "meta": null,
+  "tags": [],
+  "shared": [
+    {
+      "role": "workflow:owner",
+      "workflowId": "oRmS31cJqbOcTmQ4",
+      "projectId": "6zWfrMRLOCb42uo7",
+      "project": {
+        "id": "6zWfrMRLOCb42uo7",
+        "name": "Jovial Rana <jovialbrana@gmail.com>",
+        "type": "personal",
+        "icon": null,
+        "description": null,
+        "customTelemetryTags": [],
+        "creatorId": "2aa60732-fcb1-4192-9d84-de4bc46532fc",
+        "createdAt": "2026-09-09T00:32:15.021Z",
+        "updatedAt": "2026-09-09T18:07:58.884Z"
+      },
+      "createdAt": "2026-11-10T04:34:36.475Z",
+      "updatedAt": "2026-11-10T04:34:36.475Z"
+    }
+  ],
+  "activeVersion": {
+    "versionId": "497d8f90-0b4f-4416-b12c-7deed661dcaa",
+    "workflowId": "oRmS31cJqbOcTmQ4",
+    "nodes": [
+      {
+        "id": "f729e5c1-6453-4192-a99a-4ab47c69bc5f",
+        "name": "Research Status Request",
+        "webhookId": "942fc121-1198-431a-b486-ba3ca04f8a37",
+        "type": "n8n-nodes-base.webhook",
+        "typeVersion": 2,
+        "position": [
+          0,
+          96
+        ],
+        "parameters": {
+          "path": "psycray/research/status",
+          "authentication": "headerAuth",
+          "responseMode": "responseNode",
+          "options": {}
+        },
+        "credentials": {
+          "httpHeaderAuth": {
+            "id": "7RkLwKAkSSYctcRB",
+            "name": "X-Psycray-Key"
+          }
+        }
+      },
+      {
+        "id": "660254b0-bcbb-4a52-937d-deb1d06b3010",
+        "name": "Load Research Job",
+        "type": "n8n-nodes-base.postgres",
+        "typeVersion": 2.7,
+        "alwaysOutputData": true,
+        "position": [
+          224,
+          96
+        ],
+        "parameters": {
+          "operation": "executeQuery",
+          "query": "-- Job status, joined with the stored research once the job has finished.\n-- Jobs stuck in 'running' for over 10 minutes are reported as failed.\nSELECT\n  j.id::text AS job_id,\n  CASE\n    WHEN j.status = 'running' AND j.created_at < NOW() - INTERVAL '10 minutes' THEN 'failed'\n    ELSE j.status\n  END AS status,\n  CASE\n    WHEN j.status = 'running' AND j.created_at < NOW() - INTERVAL '10 minutes' THEN 'Research took too long and was stopped.'\n    ELSE j.error\n  END AS error,\n  j.input,\n  j.domain,\n  j.created_at,\n  j.updated_at,\n  CASE WHEN j.status IN ('completed', 'cached') THEN to_jsonb(cr) END AS record\nFROM research_jobs j\nLEFT JOIN company_research cr ON cr.domain = j.domain\nWHERE j.id::text = $1;",
+          "options": {
+            "queryReplacement": "={{ [ $json.query.id || '' ] }}"
+          }
+        },
+        "credentials": {
+          "postgres": {
+            "id": "V1HMewWXgQBIMFpN",
+            "name": "Postgres account 6"
+          }
+        }
+      },
+      {
+        "id": "13a77bd9-bcfc-40f2-ae45-373c01780a22",
+        "name": "Was Job Found?",
+        "type": "n8n-nodes-base.if",
+        "typeVersion": 2.3,
+        "position": [
+          448,
+          96
+        ],
+        "parameters": {
+          "conditions": {
+            "options": {
+              "caseSensitive": true,
+              "leftValue": "",
+              "typeValidation": "loose",
+              "version": 3
+            },
+            "conditions": [
+              {
+                "id": "9a051f1c-7c9c-42e5-b114-8c3b79bded0c",
+                "leftValue": "={{ $json.job_id }}",
+                "operator": {
+                  "type": "string",
+                  "operation": "exists",
+                  "singleValue": true
+                },
+                "rightValue": ""
+              }
+            ],
+            "combinator": "and"
+          },
+          "looseTypeValidation": true,
+          "options": {}
+        }
+      },
+      {
+        "id": "c1cf2e6a-0c58-41be-93e7-9895456dc0e2",
+        "name": "Respond 200 Job",
+        "type": "n8n-nodes-base.respondToWebhook",
+        "typeVersion": 1.1,
+        "position": [
+          672,
+          0
+        ],
+        "parameters": {
+          "respondWith": "json",
+          "responseBody": "={{ $json }}",
+          "options": {
+            "responseCode": 200
+          }
+        }
+      },
+      {
+        "id": "0b0ce754-7f77-40a8-8d86-b23c5ff0f1c3",
+        "name": "Respond 404 Not Found",
+        "type": "n8n-nodes-base.respondToWebhook",
+        "typeVersion": 1.1,
+        "position": [
+          672,
+          192
+        ],
+        "parameters": {
+          "respondWith": "json",
+          "responseBody": "={{ { error: 'Research job not found.' } }}",
+          "options": {
+            "responseCode": 404
+          }
+        }
+      },
+      {
+        "id": "02dbe455-18ca-42b6-a010-81049a1c7066",
+        "name": "Research Agent Failed",
+        "type": "n8n-nodes-base.errorTrigger",
+        "typeVersion": 1,
+        "position": [
+          0,
+          416
+        ],
+        "parameters": {}
+      },
+      {
+        "id": "403900cc-100c-4cb0-ba69-08745b2aa73e",
+        "name": "Mark Job Failed",
+        "type": "n8n-nodes-base.postgres",
+        "typeVersion": 2.7,
+        "position": [
+          224,
+          416
+        ],
+        "parameters": {
+          "operation": "executeQuery",
+          "query": "UPDATE research_jobs\nSET status = 'failed',\n    error = $2,\n    updated_at = NOW()\nWHERE execution_id = $1\n  AND status = 'running';",
+          "options": {
+            "queryReplacement": "={{ [ String($json.execution?.id || ''), 'Research step failed: ' + ($json.execution?.lastNodeExecuted || 'unknown step') + '. ' + ($json.execution?.error?.message || '') ] }}"
+          }
+        },
+        "credentials": {
+          "postgres": {
+            "id": "V1HMewWXgQBIMFpN",
+            "name": "Postgres account 6"
+          }
+        }
+      },
+      {
+        "id": "dd37c848-201a-4cb0-805d-d4f01bb35df1",
+        "name": "List Companies Request",
+        "webhookId": "e2d3d678-78e5-4575-af75-1bcb00329386",
+        "type": "n8n-nodes-base.webhook",
+        "typeVersion": 2,
+        "position": [
+          0,
+          608
+        ],
+        "parameters": {
+          "path": "psycray/companies",
+          "authentication": "headerAuth",
+          "responseMode": "responseNode",
+          "options": {}
+        },
+        "credentials": {
+          "httpHeaderAuth": {
+            "id": "7RkLwKAkSSYctcRB",
+            "name": "X-Psycray-Key"
+          }
+        }
+      },
+      {
+        "id": "50630e39-7c14-4c21-8dcf-a6609e082cbc",
+        "name": "Load Companies",
+        "type": "n8n-nodes-base.postgres",
+        "typeVersion": 2.7,
+        "position": [
+          224,
+          608
+        ],
+        "parameters": {
+          "operation": "executeQuery",
+          "query": "-- Saved research, newest first (Overview, Saved Companies).\n-- One row out: { records: [...] } so the webhook returns a single JSON object.\nSELECT COALESCE(json_agg(c ORDER BY c.updated_at DESC), '[]'::json) AS records\nFROM (\n  SELECT id, domain, status, updated_at, company_facts, research_signals,\n         synthesized_research, sources, icp_score, icp_tier, icp_breakdown, account_brief\n  FROM company_research\n  ORDER BY updated_at DESC\n  LIMIT 200\n) c;",
+          "options": {}
+        },
+        "credentials": {
+          "postgres": {
+            "id": "V1HMewWXgQBIMFpN",
+            "name": "Postgres account 6"
+          }
+        }
+      },
+      {
+        "id": "cb12a57a-6afa-4ba0-9503-a07c727ac62c",
+        "name": "Respond 200 Companies",
+        "type": "n8n-nodes-base.respondToWebhook",
+        "typeVersion": 1.1,
+        "position": [
+          448,
+          608
+        ],
+        "parameters": {
+          "respondWith": "json",
+          "responseBody": "={{ { records: $json.records } }}",
+          "options": {
+            "responseCode": 200
+          }
+        }
+      },
+      {
+        "id": "73626e05-36ea-4f54-9cf2-95d987ba77d7",
+        "name": "List Research Jobs Request",
+        "webhookId": "5eb43af5-8f06-41e2-8bd9-10abd0ea45e5",
+        "type": "n8n-nodes-base.webhook",
+        "typeVersion": 2,
+        "position": [
+          0,
+          800
+        ],
+        "parameters": {
+          "path": "psycray/research/jobs",
+          "authentication": "headerAuth",
+          "responseMode": "responseNode",
+          "options": {}
+        },
+        "credentials": {
+          "httpHeaderAuth": {
+            "id": "7RkLwKAkSSYctcRB",
+            "name": "X-Psycray-Key"
+          }
+        }
+      },
+      {
+        "id": "d0a5b9ed-3771-40e8-b10d-30285a1d0b4e",
+        "name": "Load Research Jobs",
+        "type": "n8n-nodes-base.postgres",
+        "typeVersion": 2.7,
+        "position": [
+          224,
+          800
+        ],
+        "parameters": {
+          "operation": "executeQuery",
+          "query": "-- Recent research requests and outcomes (Overview activity log).\n-- Jobs stuck in 'running' for over 10 minutes are reported as failed, as in /research/status.\nSELECT COALESCE(json_agg(j ORDER BY j.created_at DESC), '[]'::json) AS jobs\nFROM (\n  SELECT\n    id::text AS job_id,\n    CASE WHEN status = 'running' AND created_at < NOW() - INTERVAL '10 minutes' THEN 'failed' ELSE status END AS status,\n    input,\n    domain,\n    CASE WHEN status = 'running' AND created_at < NOW() - INTERVAL '10 minutes'\n         THEN 'Research took too long and was stopped.' ELSE error END AS error,\n    created_at\n  FROM research_jobs\n  ORDER BY created_at DESC\n  LIMIT 50\n) j;",
+          "options": {}
+        },
+        "credentials": {
+          "postgres": {
+            "id": "V1HMewWXgQBIMFpN",
+            "name": "Postgres account 6"
+          }
+        }
+      },
+      {
+        "id": "2ee60eaa-12b8-4229-8386-4d34af72fdfd",
+        "name": "Respond 200 Jobs",
+        "type": "n8n-nodes-base.respondToWebhook",
+        "typeVersion": 1.1,
+        "position": [
+          448,
+          800
+        ],
+        "parameters": {
+          "respondWith": "json",
+          "responseBody": "={{ { jobs: $json.jobs } }}",
+          "options": {
+            "responseCode": 200
+          }
+        }
+      },
+      {
+        "id": "38b9ede8-75f3-4626-9462-b32e29c766a1",
+        "name": "Recalculate Score Request",
+        "webhookId": "8d486f47-aa87-4542-9a45-aafbd37c4638",
+        "type": "n8n-nodes-base.webhook",
+        "typeVersion": 2,
+        "position": [
+          0,
+          1008
+        ],
+        "parameters": {
+          "httpMethod": "POST",
+          "path": "psycray/research/rescore",
+          "authentication": "headerAuth",
+          "responseMode": "responseNode",
+          "options": {}
+        },
+        "credentials": {
+          "httpHeaderAuth": {
+            "id": "7RkLwKAkSSYctcRB",
+            "name": "X-Psycray-Key"
+          }
+        }
+      },
+      {
+        "id": "a3f4fd8f-676b-40e8-8754-c0c33c75f609",
+        "name": "Load Saved Research",
+        "type": "n8n-nodes-base.postgres",
+        "typeVersion": 2.7,
+        "position": [
+          224,
+          1008
+        ],
+        "parameters": {
+          "operation": "executeQuery",
+          "query": "-- Saved research for one domain (one row even when missing).\nSELECT cr.domain, cr.icp_score, cr.icp_tier, cr.icp_breakdown, cr.synthesized_research\nFROM (SELECT 1) AS input\nLEFT JOIN company_research cr\n  ON cr.domain = $1\n AND cr.status = 'validated';",
+          "options": {
+            "queryReplacement": "={{ [ String($json.body?.domain || '').trim().toLowerCase().replace(/^https?:\\/\\//, '').replace(/^www\\./, '').split('/')[0] ] }}"
+          }
+        },
+        "credentials": {
+          "postgres": {
+            "id": "V1HMewWXgQBIMFpN",
+            "name": "Postgres account 6"
+          }
+        }
+      },
+      {
+        "id": "2928e08d-b18a-44aa-a030-c969bd248260",
+        "name": "Recalculate Score",
+        "type": "n8n-nodes-base.code",
+        "typeVersion": 2,
+        "position": [
+          448,
+          1008
+        ],
+        "parameters": {
+          "jsCode": "// ── GENERATED from src/lib/scoring/icpEngine.ts by `npm run sync:n8n`. Do not edit in n8n. ──\n/**\n * Psycray ICP scoring engine: the single source of truth for ICP scores.\n *\n * The same file runs in three places:\n *   - n8n Code nodes (\"ICP Scoring Logic\", \"Recalculate Score\"), type-stripped\n *     and embedded by `npm run sync:n8n` (scripts/sync-n8n-scoring.ts)\n *   - the regression tests (tests/scoring)\n *   - the frontend's mock data\n *\n * Rules:\n *   - The LLM only CLASSIFIES evidence into fixed categories, each with a\n *     quote and a source. It never produces numbers that reach the score.\n *   - `normalizeEvidence` turns that raw classification into canonical\n *     evidence (validated enums, verified sources, stable order).\n *   - `scoreCompany` is a pure function of (evidence, config). Same input,\n *     same output, every time. No clock, no randomness, no I/O.\n *   - Unknown is not failure: a criterion without evidence is \"unknown\",\n *     earns 0 points and is listed under missing information. The result\n *     reports how much of the weight was actually assessed (coverage).\n *\n * Constraints (so it can be pasted into an n8n Code node):\n *   - no imports, no globals beyond plain JS built-ins (no URL, no crypto)\n *   - only erasable TypeScript syntax\n */\n\nconst ICP_ALGORITHM_VERSION = \"2.0.0\"\n/** Version label for scores produced by the original keyword rules. */\nconst LEGACY_ALGORITHM_VERSION = \"1-keyword\"\n\n/* ------------------------------------------------------------------ */\n/* Configuration                                                       */\n/* ------------------------------------------------------------------ */\n\n                                                                                                                           \n\n                              \n          \n              \n                   \n                         \n                 \n            \n               \n                           \n                \n                        \n                     \n               \n                \n               \n           \n\n                             \n                         \n                        \n                     \n                     \n                          \n                    \n\n                                                                                                                    \n\n                                                                                                            \n\n                            \n                                                                        \n                 \n                                                                       \n                                       \n                                                                            \n                                                        \n                                                                              \n                                                                                   \n                                                                              \n                                                          \n                                                      \n                                                        \n                                                                             \n                            \n                                                               \n                             \n                                                                             \n                                                        \n                                           \n                                                                                 \n                            \n \n\n/**\n * Psycray's current model (weights from the sales team, 2026-11-21).\n * Sweet spot from the account-brief prompt: U.S. B2B organisations with\n * 10–250 employees (10–50 preferred): SaaS, manufacturers and industrial\n * suppliers, associations, agencies.\n */\nconst DEFAULT_ICP_CONFIG            = {\n  version: \"psycray-default-2026-11-21\",\n  weights: {\n    industry_fit: 20,\n    company_size: 15,\n    digital_opportunity: 30,\n    growth_signals: 25,\n    project_ownership: 10,\n  },\n  industryFit: {\n    saas: 1,\n    software: 1,\n    manufacturing: 1,\n    industrial_supplier: 1,\n    association: 1,\n    agency: 1,\n    logistics: 0.5,\n    professional_services: 0.5,\n    healthcare: 0.25,\n    financial_services: 0.25,\n    education: 0.25,\n    nonprofit: 0.25,\n  },\n  sizeBands: [\n    { min: 10, max: 50, fraction: 1, label: \"10–50 employees (sweet spot)\" },\n    { min: 51, max: 250, fraction: 0.7, label: \"51–250 employees (target range)\" },\n    { min: 251, max: 1000, fraction: 0.25, label: \"251–1,000 employees (above target)\" },\n    { min: 1, max: 9, fraction: 0.25, label: \"under 10 employees (below target)\" },\n    { min: 1001, max: null, fraction: 0, label: \"over 1,000 employees (enterprise)\" },\n  ],\n  digitalOpportunity: { stated: 1, inferred: 0.5 },\n  growthSignalStrength: {\n    hiring: 0.6,\n    funding: 0.6,\n    expansion: 0.6,\n    acquisition: 0.5,\n    partnership: 0.3,\n    product_launch: 0.3,\n  },\n  growthWindowMonths: 18,\n  undatedSignalFactor: 0.5,\n  projectOwnership: { stated: 1, inferred: 0.5 },\n  tiers: { high: 80, moderate: 55 },\n  minCoverageForTier: 50,\n}\n\nconst CRITERIA                                         = [\n  { key: \"industry_fit\", label: \"Industry Fit\" },\n  { key: \"company_size\", label: \"Company Size\" },\n  { key: \"digital_opportunity\", label: \"Digital Opportunity\" },\n  { key: \"growth_signals\", label: \"Growth Signals\" },\n  { key: \"project_ownership\", label: \"Project Ownership\" },\n]\n\nconst INDUSTRY_CATEGORIES                     = [\n  \"saas\", \"software\", \"manufacturing\", \"industrial_supplier\", \"association\", \"agency\", \"logistics\",\n  \"professional_services\", \"healthcare\", \"financial_services\", \"retail_consumer\", \"education\",\n  \"government\", \"nonprofit\", \"other\",\n]\nconst DIGITAL_NEED_TYPES                    = [\n  \"workflow_automation\", \"system_integration\", \"customer_portal\", \"custom_software\", \"legacy_modernization\", \"data_reporting\",\n]\nconst GROWTH_SIGNAL_TYPES                     = [\"hiring\", \"funding\", \"expansion\", \"acquisition\", \"partnership\", \"product_launch\"]\nconst OWNER_TYPES              = [\"technical_leader\", \"product_leader\", \"operations_leader\", \"in_house_engineering\"]\n\n/* ------------------------------------------------------------------ */\n/* Evidence                                                            */\n/* ------------------------------------------------------------------ */\n\n                                         \n\n/** A quote or paraphrase plus where it came from. */\n                              \n              \n                \n                                                                                               \n                   \n \n\n/** Canonical evidence the engine scores. Produced by `normalizeEvidence`. */\n                              \n                \n                                                                                            \n                       \n                                                                 \n                          \n                                                                                       \n                                                                        \n                                                                                 \n                   \n                          \n                       \n                         \n                         \n     \n                                                                    \n                           \n                    \n \n\n                                   \n                \n                       \n                                                                                                   \n                         \n                                                                            \n                     \n \n\n/* ------------------------------------------------------------------ */\n/* Result                                                              */\n/* ------------------------------------------------------------------ */\n\n                                                                                       \n\n                                  \n                   \n                   \n                                    \n               \n                                                    \n             \n                \n                                         \n                  \n                         \n                \n                         \n \n\n                              \n                               \n                              \n                      \n                                                            \n                   \n                                                                                                   \n \n\n                               \n                      \n                     \n                           \n                               \n                            \n                                     \n                              \n                                                                                                                             \n \n\n                                 \n               \n                                                                \n                             \n                                                             \n                  \n                                                               \n                      \n                   \n                           \n                        \n                                       \n                              \n                                                                             \n                            \n                              \n                               \n                            \n \n\n/* ------------------------------------------------------------------ */\n/* Helpers                                                             */\n/* ------------------------------------------------------------------ */\n\nfunction clean(value         , max = 400)         {\n  return typeof value === \"string\" ? value.replace(/\\s+/g, \" \").trim().slice(0, max) : \"\"\n}\n\nfunction oneOf                  (value         , allowed     )           {\n  const v = clean(value).toLowerCase().replace(/[\\s-]+/g, \"_\")\n  return (allowed            ).includes(v) ? (v     ) : null\n}\n\nfunction asArray(value         )            {\n  return Array.isArray(value) ? value : []\n}\n\nfunction obj(value         )                          {\n  return value && typeof value === \"object\" && !Array.isArray(value) ? (value                           ) : {}\n}\n\n/** Hostname without \"www.\", lower case. Regex only: n8n's sandbox has no URL global. */\nfunction hostOf(url        )         {\n  const m = clean(url).toLowerCase().match(/^(?:https?:\\/\\/)?([^/?#:\\s]+)/)\n  return m ? m[1].replace(/^www\\./, \"\") : \"\"\n}\n\nfunction normalizeUrl(url        )         {\n  return clean(url).toLowerCase().replace(/^https?:\\/\\//, \"\").replace(/^www\\./, \"\").replace(/[/#?]+$/, \"\")\n}\n\nfunction isOnDomain(host        , domain        )          {\n  return host !== \"\" && (host === domain || host.endsWith(\".\" + domain))\n}\n\nfunction ref(text         , source         , ctx                                            )              {\n  const src = clean(source, 300)\n  const host = hostOf(src)\n  const verified =\n    src !== \"\" &&\n    (isOnDomain(host, ctx.domain) || ctx.retrieved.has(normalizeUrl(src)) || src.toLowerCase() === ctx.domain)\n  return { text: clean(text), source: src, verified }\n}\n\nfunction toDate(value         )                {\n  const s = clean(value, 40)\n  if (!/^\\d{4}-\\d{2}(-\\d{2})?/.test(s)) return null\n  const t = Date.parse(s.length === 7 ? s + \"-01\" : s)\n  return Number.isNaN(t) ? null : new Date(t).toISOString().slice(0, 10)\n}\n\nfunction toCount(value         )                {\n  if (typeof value === \"number\" && Number.isFinite(value)) return Math.round(value)\n  if (typeof value === \"string\") {\n    const n = Number(value.replace(/[,\\s+]/g, \"\"))\n    return Number.isFinite(n) && value.trim() !== \"\" ? Math.round(n) : null\n  }\n  return null\n}\n\nfunction round1(n        )         {\n  return Math.round(n * 10) / 10\n}\n\nfunction byKey   (key                     ) {\n  return (a   , b   ) => (key(a) < key(b) ? -1 : key(a) > key(b) ? 1 : 0)\n}\n\nfunction uniqueBy   (items     , key                     )      {\n  const seen = new Set        ()\n  return items.filter((item) => {\n    const k = key(item)\n    if (seen.has(k)) return false\n    seen.add(k)\n    return true\n  })\n}\n\n/** JSON with sorted keys, so equal values always serialise identically. */\nfunction canonicalJson(value         )         {\n  if (Array.isArray(value)) return \"[\" + value.map(canonicalJson).join(\",\") + \"]\"\n  if (value && typeof value === \"object\") {\n    const o = value                           \n    return (\n      \"{\" +\n      Object.keys(o)\n        .filter((k) => o[k] !== undefined)\n        .sort()\n        .map((k) => JSON.stringify(k) + \":\" + canonicalJson(o[k]))\n        .join(\",\") +\n      \"}\"\n    )\n  }\n  return JSON.stringify(value ?? null)\n}\n\n/** Deterministic 64-bit content hash (cyrb53, hex). Not cryptographic. */\nfunction fingerprint(value         )         {\n  const str = canonicalJson(value)\n  let h1 = 0xdeadbeef\n  let h2 = 0x41c6ce57\n  for (let i = 0; i < str.length; i++) {\n    const ch = str.charCodeAt(i)\n    h1 = Math.imul(h1 ^ ch, 2654435761)\n    h2 = Math.imul(h2 ^ ch, 1597334677)\n  }\n  h1 = Math.imul(h1 ^ (h1 >>> 16), 2246822507) ^ Math.imul(h2 ^ (h2 >>> 13), 3266489909)\n  h2 = Math.imul(h2 ^ (h2 >>> 16), 2246822507) ^ Math.imul(h1 ^ (h1 >>> 13), 3266489909)\n  return (h2 >>> 0).toString(16).padStart(8, \"0\") + (h1 >>> 0).toString(16).padStart(8, \"0\")\n}\n\n/* ------------------------------------------------------------------ */\n/* Normalisation: raw LLM classification → canonical evidence          */\n/* ------------------------------------------------------------------ */\n\n/**\n * Validates and canonicalises the evidence classifier's JSON.\n * Unknown enum values are dropped, sources are checked against what the\n * research actually retrieved, duplicates are removed and every list is\n * sorted, so the LLM's ordering or phrasing of the same facts can't move\n * the score.\n */\nfunction normalizeEvidence(raw         , context                  )              {\n  const domain = hostOf(context.domain)\n  const retrieved = new Set(asArray(context.external_urls).map((u) => normalizeUrl(String(u))))\n  const ctx = { domain, retrieved }\n  const r = obj(raw)\n\n  const ind = obj(r.industry)\n  const category = oneOf(ind.category, INDUSTRY_CATEGORIES)\n  const industry = category\n    ? { category, label: clean(ind.label, 120), evidence: ref(ind.evidence, ind.source, ctx) }\n    : null\n\n  const employee_counts = uniqueBy(\n    asArray(r.employee_count_evidence)\n      .map((item) => {\n        const e = obj(item)\n        let min = toCount(e.min ?? e.value)\n        let max = toCount(e.max ?? e.value)\n        if (min === null && max !== null) min = max\n        if (max === null && min !== null) max = min\n        if (min === null || max === null || min < 1) return null\n        if (max < min) [min, max] = [max, min]\n        return { min, max, evidence: ref(e.evidence, e.source, ctx) }\n      })\n      .filter((x)                             => x !== null)\n      .sort(byKey((x) => `${String(x.min).padStart(9, \"0\")}|${String(x.max).padStart(9, \"0\")}|${x.evidence.source}`)),\n    (x) => `${x.min}|${x.max}|${x.evidence.source}`,\n  )\n\n  const digital_needs = uniqueBy(\n    asArray(r.digital_needs)\n      .map((item) => {\n        const e = obj(item)\n        const type = oneOf(e.type, DIGITAL_NEED_TYPES)\n        const basis = oneOf(e.basis, [\"stated\", \"inferred\"]           ) ?? \"inferred\"\n        return type ? { type, basis, evidence: ref(e.evidence, e.source, ctx) } : null\n      })\n      .filter((x)                             => x !== null)\n      .sort(byKey((x) => `${x.type}|${x.basis}|${x.evidence.source}|${x.evidence.text}`)),\n    (x) => `${x.type}|${x.basis}|${x.evidence.source}`,\n  )\n\n  const growth_signals = uniqueBy(\n    asArray(r.growth_signals)\n      .map((item) => {\n        const e = obj(item)\n        const type = oneOf(e.type, GROWTH_SIGNAL_TYPES)\n        if (!type) return null\n        return {\n          type,\n          date: toDate(e.date),\n          about_target: e.about_target === true,\n          evidence: ref(e.evidence, e.source_url ?? e.source, ctx),\n        }\n      })\n      .filter((x)                             => x !== null)\n      .sort(byKey((x) => `${x.type}|${x.date ?? \"\"}|${x.evidence.source}|${x.evidence.text}`)),\n    (x) => `${x.type}|${x.date ?? \"\"}|${x.evidence.source}`,\n  )\n\n  const owners = uniqueBy(\n    asArray(r.project_owners)\n      .map((item) => {\n        const e = obj(item)\n        const type = oneOf(e.type, OWNER_TYPES)\n        const basis = oneOf(e.basis, [\"stated\", \"inferred\"]           ) ?? \"inferred\"\n        return type ? { type, basis, evidence: ref(e.evidence, e.source, ctx) } : null\n      })\n      .filter((x)                             => x !== null)\n      .sort(byKey((x) => `${x.type}|${x.basis}|${x.evidence.source}|${x.evidence.text}`)),\n    (x) => `${x.type}|${x.basis}|${x.evidence.source}`,\n  )\n\n  const unknowns = uniqueBy(\n    asArray(context.unknowns)\n      .map((u) => clean(u, 200))\n      .filter(Boolean),\n    (u) => u.toLowerCase(),\n  ).sort()\n\n  return {\n    domain,\n    researched_at: clean(context.researched_at, 40),\n    external_results: retrieved.size,\n    industry,\n    employee_counts,\n    digital_needs,\n    growth_signals,\n    owners,\n    hq_country: clean(r.hq_country, 60) || null,\n    unknowns,\n  }\n}\n\n/* ------------------------------------------------------------------ */\n/* Scoring                                                             */\n/* ------------------------------------------------------------------ */\n\n                      \n                  \n                         \n                \n                         \n \n\nconst NEED_LABEL                                  = {\n  workflow_automation: \"workflow automation\",\n  system_integration: \"system integration\",\n  customer_portal: \"customer or partner portal\",\n  custom_software: \"custom software\",\n  legacy_modernization: \"legacy system modernisation\",\n  data_reporting: \"data and reporting\",\n}\n\nconst OWNER_LABEL                            = {\n  technical_leader: \"technical leader\",\n  product_leader: \"product leader\",\n  operations_leader: \"operations leader\",\n  in_house_engineering: \"in-house engineering or IT team\",\n}\n\nfunction assessIndustry(ev             , cfg           )             {\n  if (!ev.industry) {\n    return { fraction: 0, status: \"unknown\", reason: \"The company's own industry could not be determined\", evidence: [] }\n  }\n  const fraction = cfg.industryFit[ev.industry.category] ?? 0\n  const name = ev.industry.label || ev.industry.category.replace(/_/g, \" \")\n  const fit = fraction >= 1 ? \"core vertical\" : fraction > 0 ? \"adjacent vertical\" : \"outside target verticals\"\n  return {\n    fraction,\n    status: fraction >= 1 ? \"met\" : fraction > 0 ? \"partial\" : \"not_met\",\n    reason: `${name}: ${fit}`,\n    evidence: [ev.industry.evidence],\n  }\n}\n\nfunction bandFor(count        , cfg           ) {\n  return cfg.sizeBands.find((b) => count >= b.min && (b.max === null || count <= b.max)) ?? null\n}\n\nfunction assessSize(ev             , cfg           )             {\n  if (ev.employee_counts.length === 0) {\n    return { fraction: 0, status: \"unknown\", reason: \"No employee count found\", evidence: [] }\n  }\n  // Each report is a range; judge it by the band of both ends.\n  const bands = ev.employee_counts.flatMap((c) => [bandFor(c.min, cfg), bandFor(c.max, cfg)])\n  const labels = uniqueBy(bands.filter((b) => b !== null).map((b) => b .label), (l) => l)\n  const fraction = Math.min(...bands.map((b) => b?.fraction ?? 0))\n  const evidence = ev.employee_counts.map((c) => c.evidence)\n  const range = (c                              ) => (c.min === c.max ? `${c.min}` : `${c.min}–${c.max}`)\n  if (labels.length > 1) {\n    return {\n      fraction,\n      status: \"conflicting\",\n      reason: `Sources disagree (${ev.employee_counts.map(range).join(\" vs \")} employees); scored on the lower-fit reading`,\n      evidence,\n    }\n  }\n  return {\n    fraction,\n    status: fraction >= 1 ? \"met\" : fraction > 0 ? \"partial\" : \"not_met\",\n    reason: labels[0] ?? \"Employee count outside every configured band\",\n    evidence,\n  }\n}\n\nfunction assessDigital(ev             , cfg           )             {\n  const usable = ev.digital_needs.filter((n) => n.basis === \"inferred\" || n.evidence.verified)\n  if (usable.length === 0) {\n    return {\n      fraction: 0,\n      status: \"unknown\",\n      reason: \"No workflow, integration, portal or custom-software need found in the sources reviewed\",\n      evidence: [],\n    }\n  }\n  const stated = usable.filter((n) => n.basis === \"stated\")\n  const chosen = stated.length > 0 ? stated : usable\n  const fraction = stated.length > 0 ? cfg.digitalOpportunity.stated : cfg.digitalOpportunity.inferred\n  const types = uniqueBy(chosen.map((n) => NEED_LABEL[n.type]), (t) => t)\n  return {\n    fraction,\n    status: fraction >= 1 ? \"met\" : \"partial\",\n    reason: `${stated.length > 0 ? \"Stated\" : \"Inferred (not stated by a source)\"} need: ${types.join(\", \")}`,\n    evidence: chosen.map((n) => n.evidence),\n  }\n}\n\nfunction monthsBetween(fromIso        , toIso        )         {\n  return (Date.parse(toIso) - Date.parse(fromIso)) / (1000 * 60 * 60 * 24 * 30.4375)\n}\n\nfunction assessGrowth(ev             , cfg           )             {\n  const about = ev.growth_signals.filter((s) => s.about_target)\n  const qualifying = about.filter((s) => {\n    if (!s.evidence.verified) return false\n    if (s.date === null) return true\n    const age = monthsBetween(s.date, ev.researched_at)\n    return age <= cfg.growthWindowMonths && age >= -1\n  })\n  if (qualifying.length === 0) {\n    if (ev.external_results === 0) {\n      return { fraction: 0, status: \"unknown\", reason: \"No external sources were found to check for growth\", evidence: [] }\n    }\n    const excluded = ev.growth_signals.length - qualifying.length\n    return {\n      fraction: 0,\n      status: about.length > 0 ? \"not_met\" : \"unknown\",\n      reason:\n        about.length > 0\n          ? `No verified growth signal in the last ${cfg.growthWindowMonths} months`\n          : `No growth signal about this company was found${excluded > 0 ? ` (${excluded} about other companies or unverifiable, excluded)` : \"\"}`,\n      evidence: [],\n    }\n  }\n  // Strongest signal per type counts once; dated beats undated.\n  const best = new Map                                                                             ()\n  for (const s of qualifying) {\n    const strength = cfg.growthSignalStrength[s.type] * (s.date === null ? cfg.undatedSignalFactor : 1)\n    const current = best.get(s.type)\n    if (!current || strength > current.strength) best.set(s.type, { strength, signal: s })\n  }\n  const picked = [...best.values()].sort(byKey((x) => x.signal.type))\n  const fraction = Math.min(1, picked.reduce((sum, x) => sum + x.strength, 0))\n  return {\n    fraction,\n    status: fraction >= 1 ? \"met\" : \"partial\",\n    reason: `Verified signals: ${picked.map((x) => x.signal.type.replace(/_/g, \" \") + (x.signal.date ? ` (${x.signal.date})` : \" (undated)\")).join(\", \")}`,\n    evidence: picked.map((x) => x.signal.evidence),\n  }\n}\n\nfunction assessOwnership(ev             , cfg           )             {\n  const usable = ev.owners.filter((o) => o.basis === \"inferred\" || o.evidence.verified)\n  if (usable.length === 0) {\n    return { fraction: 0, status: \"unknown\", reason: \"No one identified who would own a technology project\", evidence: [] }\n  }\n  const stated = usable.filter((o) => o.basis === \"stated\")\n  const chosen = stated.length > 0 ? stated : usable\n  const fraction = stated.length > 0 ? cfg.projectOwnership.stated : cfg.projectOwnership.inferred\n  return {\n    fraction,\n    status: fraction >= 1 ? \"met\" : \"partial\",\n    reason: `${stated.length > 0 ? \"Identified\" : \"Likely (inferred)\"}: ${uniqueBy(chosen.map((o) => OWNER_LABEL[o.type]), (t) => t).join(\", \")}`,\n    evidence: chosen.map((o) => o.evidence),\n  }\n}\n\nconst ASSESSORS                                                                        = {\n  industry_fit: assessIndustry,\n  company_size: assessSize,\n  digital_opportunity: assessDigital,\n  growth_signals: assessGrowth,\n  project_ownership: assessOwnership,\n}\n\n/** Pure: identical (evidence, config) always gives an identical result. */\nfunction scoreCompany(evidence             , config            = DEFAULT_ICP_CONFIG)                 {\n  const totalWeight = CRITERIA.reduce((sum, c) => sum + config.weights[c.key], 0)\n  if (totalWeight !== 100) throw new Error(`ICP weights must sum to 100 (got ${totalWeight})`)\n\n  const criteria                    = CRITERIA.map(({ key, label }) => {\n    const a = ASSESSORS[key](evidence, config)\n    const weight = config.weights[key]\n    const fraction = Math.max(0, Math.min(1, a.fraction))\n    return {\n      key,\n      criterion: label,\n      score: round1(weight * fraction),\n      max: weight,\n      weight,\n      fraction: Math.round(fraction * 1000) / 1000,\n      status: a.status,\n      reason: a.reason,\n      evidence: a.evidence,\n    }\n  })\n\n  const score = Math.round(criteria.reduce((sum, c) => sum + c.score, 0))\n  const unknownWeight = criteria.filter((c) => c.status === \"unknown\").reduce((sum, c) => sum + c.weight, 0)\n  const coverage = 100 - unknownWeight\n  const tier                         =\n    coverage < config.minCoverageForTier\n      ? \"Needs Review\"\n      : score >= config.tiers.high\n        ? \"High Fit\"\n        : score >= config.tiers.moderate\n          ? \"Moderate Fit\"\n          : \"Low Fit\"\n\n  const missing = [\n    ...criteria.filter((c) => c.status === \"unknown\").map((c) => `${c.criterion}: ${c.reason}`),\n    ...evidence.unknowns,\n  ]\n\n  return {\n    score,\n    tier,\n    criteria,\n    coverage,\n    max_possible: Math.round(score + unknownWeight),\n    missing,\n    algorithm_version: ICP_ALGORITHM_VERSION,\n    config_version: config.version,\n    weights: { ...config.weights },\n    evidence_fingerprint: fingerprint(evidence),\n    snapshot_id: null,\n    calculated_at: null,\n    previous: null,\n    change: null,\n  }\n}\n\n/* ------------------------------------------------------------------ */\n/* Comparison: previous score → new score                              */\n/* ------------------------------------------------------------------ */\n\n/**\n * Reduces any stored score (new engine or the legacy keyword rules) to the\n * fields needed for a comparison. Returns null when there is nothing to compare.\n */\nfunction summarizeStored(stored         , storedScore          , storedTier          )                      {\n  const s = obj(stored)\n  const criteria = asArray(s.criteria)\n    .map((c) => obj(c))\n    .filter((c) => typeof c.criterion === \"string\" && typeof c.score === \"number\")\n    .map((c) => ({\n      key: (typeof c.key === \"string\" ? c.key : undefined)                            ,\n      criterion: c.criterion          ,\n      score: c.score          ,\n      max: typeof c.max === \"number\" ? c.max : 0,\n      status: typeof c.status === \"string\" ? c.status : \"unknown\",\n      evidence: asArray(c.evidence).map((e) => obj(e)                          ),\n    }))\n  const score = typeof s.score === \"number\" ? s.score : typeof storedScore === \"number\" ? storedScore : null\n  if (score === null && criteria.length === 0) return null\n  return {\n    score,\n    tier: typeof s.tier === \"string\" ? s.tier : typeof storedTier === \"string\" ? storedTier : null,\n    algorithm_version: typeof s.algorithm_version === \"string\" ? s.algorithm_version : LEGACY_ALGORITHM_VERSION,\n    config_version: typeof s.config_version === \"string\" ? s.config_version : null,\n    snapshot_id: typeof s.snapshot_id === \"string\" ? s.snapshot_id : null,\n    evidence_fingerprint: typeof s.evidence_fingerprint === \"string\" ? s.evidence_fingerprint : null,\n    calculated_at: typeof s.calculated_at === \"string\" ? s.calculated_at : null,\n    criteria,\n  }\n}\n\nfunction toSummary(result                )               {\n  return {\n    score: result.score,\n    tier: result.tier,\n    algorithm_version: result.algorithm_version,\n    config_version: result.config_version,\n    snapshot_id: result.snapshot_id,\n    evidence_fingerprint: result.evidence_fingerprint,\n    calculated_at: result.calculated_at,\n    criteria: result.criteria.map((c) => ({\n      key: c.key,\n      criterion: c.criterion,\n      score: c.score,\n      max: c.max,\n      status: c.status,\n      evidence: c.evidence,\n    })),\n  }\n}\n\nfunction fmtDelta(n        )         {\n  const v = round1(n)\n  return (v > 0 ? \"+\" : \"\") + v\n}\n\nconst evidenceKey = (e             ) => `${e.text.toLowerCase()}|${e.source.toLowerCase()}`\n\n/**\n * Explains a score change using only the recorded differences: versions,\n * evidence fingerprint, per-criterion points, statuses and evidence items.\n */\nfunction compareScores(previous                     , next                )                     {\n  if (!previous) return null\n  const reasons           = []\n  const legacy = previous.algorithm_version === LEGACY_ALGORITHM_VERSION\n\n  if (legacy) {\n    reasons.push(\n      \"The previous score used the legacy keyword rules; this score uses evidence-based scoring \" +\n        `v${next.algorithm_version}, so criterion points are not directly comparable.`,\n    )\n  } else {\n    if (previous.algorithm_version !== next.algorithm_version) {\n      reasons.push(`Scoring algorithm changed from v${previous.algorithm_version} to v${next.algorithm_version}.`)\n    }\n    if (previous.config_version !== next.config_version) {\n      reasons.push(`ICP configuration changed from \"${previous.config_version}\" to \"${next.config_version}\".`)\n    }\n  }\n\n  const criteria = next.criteria.map((c) => {\n    const prev =\n      previous.criteria.find((p) => p.key === c.key) ??\n      previous.criteria.find((p) => p.criterion.toLowerCase() === c.criterion.toLowerCase())\n    return { now: c, prev }\n  })\n\n  if (!legacy) {\n    for (const { now, prev } of criteria) {\n      const before = prev?.score ?? 0\n      const delta = round1(now.score - before)\n      if (delta === 0 && prev && prev.status === now.status) continue\n      const prevKeys = new Set((prev?.evidence ?? []).map(evidenceKey))\n      const nowKeys = new Set(now.evidence.map(evidenceKey))\n      const added = now.evidence.filter((e) => !prevKeys.has(evidenceKey(e)))\n      const removed = (prev?.evidence ?? []).filter((e) => !nowKeys.has(evidenceKey(e)))\n      const parts           = []\n      if (added.length) parts.push(`new evidence: ${added.map((e) => `\"${e.text}\"${e.source ? ` (${e.source})` : \"\"}`).join(\"; \")}`)\n      if (removed.length) parts.push(`evidence no longer found: ${removed.map((e) => `\"${e.text}\"`).join(\"; \")}`)\n      if (prev && prev.status !== now.status) parts.push(`status ${prev.status.replace(/_/g, \" \")} → ${now.status.replace(/_/g, \" \")}`)\n      if (parts.length === 0 && delta !== 0) parts.push(\"same evidence, different weighting\")\n      if (delta === 0 && parts.length === 0) continue\n      reasons.push(`${now.criterion} ${fmtDelta(delta)} (${round1(before)} → ${now.score}): ${parts.join(\"; \")}.`)\n    }\n    if (reasons.length === 0) {\n      reasons.push(\n        previous.evidence_fingerprint === next.evidence_fingerprint\n          ? \"Evidence and configuration unchanged; the score is identical.\"\n          : \"The research wording changed, but the scored evidence did not move any criterion.\",\n      )\n    }\n  }\n\n  const delta = previous.score === null ? null : round1(next.score - previous.score)\n  return {\n    previous_score: previous.score,\n    updated_score: next.score,\n    delta,\n    reasons,\n    criteria: criteria.map(({ now, prev }) => ({\n      criterion: now.criterion,\n      previous: prev ? prev.score : null,\n      updated: now.score,\n      delta: prev ? round1(now.score - prev.score) : null,\n    })),\n  }\n}\n\n/**\n * Score evidence, stamp run metadata and compare with the previous score.\n * The single entry point used by n8n for both fresh research and recalculation.\n */\nfunction evaluate(\n  evidence             ,\n  options   \n                      \n                              \n                         \n                                  \n   ,\n)                 {\n  const result = scoreCompany(evidence, options.config ?? DEFAULT_ICP_CONFIG)\n  result.snapshot_id = options.snapshot_id\n  result.calculated_at = options.calculated_at\n  const previous = options.previous ?? null\n  result.previous = previous\n  result.change = compareScores(previous, result)\n  return result\n}\n\n// ── n8n glue ──────────────────────────────────────────────────────────\nconst row = $input.first().json;\nif (!row.domain) {\n  return [{ json: { http_status: 404, error: 'No saved research for this domain.' } }];\n}\nconst evidence = row.synthesized_research && row.synthesized_research.icp_evidence;\nif (!evidence) {\n  return [{ json: { http_status: 409, error: 'This research predates evidence-based scoring. Refresh it once to collect scoring evidence.' } }];\n}\n\nconst previous = summarizeStored(row.icp_breakdown, row.icp_score, row.icp_tier);\nconst result = evaluate(evidence, {\n  config: DEFAULT_ICP_CONFIG,\n  // Same research snapshot: recalculation never gathers new evidence.\n  snapshot_id: (previous && previous.snapshot_id) || null,\n  calculated_at: $now.toUTC().toISO(),\n  previous,\n});\n\nreturn [{ json: { http_status: 200, domain: row.domain, icp_score: result.score, icp_tier: result.tier, icp_breakdown: result, icp_evidence: evidence } }];\n"
+        }
+      },
+      {
+        "id": "025f0047-2bfb-400e-b122-a55d5c9db346",
+        "name": "Was Score Recalculated?",
+        "type": "n8n-nodes-base.if",
+        "typeVersion": 2.3,
+        "position": [
+          672,
+          1008
+        ],
+        "parameters": {
+          "conditions": {
+            "options": {
+              "caseSensitive": true,
+              "leftValue": "",
+              "typeValidation": "loose",
+              "version": 3
+            },
+            "conditions": [
+              {
+                "id": "813c53dc-beaa-4e47-af73-0aa4ccec9314",
+                "leftValue": "={{ $json.http_status }}",
+                "rightValue": 200,
+                "operator": {
+                  "type": "number",
+                  "operation": "equals"
+                }
+              }
+            ],
+            "combinator": "and"
+          },
+          "looseTypeValidation": true,
+          "options": {}
+        }
+      },
+      {
+        "id": "1e3eb2a8-e115-4a3d-b72f-85dceaa39257",
+        "name": "Save Recalculated Score",
+        "type": "n8n-nodes-base.postgres",
+        "typeVersion": 2.7,
+        "position": [
+          896,
+          912
+        ],
+        "parameters": {
+          "operation": "executeQuery",
+          "query": "-- Save the recalculated score and append it to the history.\n-- updated_at is left alone: it is the research date, not the scoring date.\nWITH updated AS (\n  UPDATE company_research\n  SET icp_score = $2, icp_tier = $3, icp_breakdown = $4::jsonb\n  WHERE domain = $1 AND status = 'validated'\n  RETURNING *\n), history AS (\n  INSERT INTO icp_score_history\n    (domain, trigger, score, tier, algorithm_version, config_version, snapshot_id,\n     evidence_fingerprint, result, evidence, calculated_at)\n  SELECT domain, 'recalculate', $2, $3, $5, $6, $7, $8, $4::jsonb, $9::jsonb, $10::timestamptz\n  FROM updated\n)\nSELECT to_jsonb(updated) AS record FROM updated;",
+          "options": {
+            "queryReplacement": "={{ [ $json.domain, $json.icp_score, $json.icp_tier, JSON.stringify($json.icp_breakdown), $json.icp_breakdown.algorithm_version, $json.icp_breakdown.config_version, $json.icp_breakdown.snapshot_id, $json.icp_breakdown.evidence_fingerprint, JSON.stringify($json.icp_evidence), $json.icp_breakdown.calculated_at ] }}"
+          }
+        },
+        "credentials": {
+          "postgres": {
+            "id": "V1HMewWXgQBIMFpN",
+            "name": "Postgres account 6"
+          }
+        }
+      },
+      {
+        "id": "8b6e740c-a647-4e45-886b-a7a6fbe829b0",
+        "name": "Respond 200 Rescored",
+        "type": "n8n-nodes-base.respondToWebhook",
+        "typeVersion": 1.1,
+        "position": [
+          1120,
+          912
+        ],
+        "parameters": {
+          "respondWith": "json",
+          "responseBody": "={{ { record: $json.record } }}",
+          "options": {
+            "responseCode": 200
+          }
+        }
+      },
+      {
+        "id": "53ba7f54-e72f-4bfe-9726-9ae1814c1f8c",
+        "name": "Respond Rescore Error",
+        "type": "n8n-nodes-base.respondToWebhook",
+        "typeVersion": 1.1,
+        "position": [
+          896,
+          1104
+        ],
+        "parameters": {
+          "respondWith": "json",
+          "responseBody": "={{ { error: $json.error } }}",
+          "options": {
+            "responseCode": "={{ $json.http_status }}"
+          }
+        }
+      }
+    ],
+    "connections": {
+      "Research Status Request": {
+        "main": [
+          [
+            {
+              "node": "Load Research Job",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Load Research Job": {
+        "main": [
+          [
+            {
+              "node": "Was Job Found?",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Was Job Found?": {
+        "main": [
+          [
+            {
+              "node": "Respond 200 Job",
+              "type": "main",
+              "index": 0
+            }
+          ],
+          [
+            {
+              "node": "Respond 404 Not Found",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Research Agent Failed": {
+        "main": [
+          [
+            {
+              "node": "Mark Job Failed",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "List Companies Request": {
+        "main": [
+          [
+            {
+              "node": "Load Companies",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Load Companies": {
+        "main": [
+          [
+            {
+              "node": "Respond 200 Companies",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "List Research Jobs Request": {
+        "main": [
+          [
+            {
+              "node": "Load Research Jobs",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Load Research Jobs": {
+        "main": [
+          [
+            {
+              "node": "Respond 200 Jobs",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Recalculate Score Request": {
+        "main": [
+          [
+            {
+              "node": "Load Saved Research",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Load Saved Research": {
+        "main": [
+          [
+            {
+              "node": "Recalculate Score",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Recalculate Score": {
+        "main": [
+          [
+            {
+              "node": "Was Score Recalculated?",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Was Score Recalculated?": {
+        "main": [
+          [
+            {
+              "node": "Save Recalculated Score",
+              "type": "main",
+              "index": 0
+            }
+          ],
+          [
+            {
+              "node": "Respond Rescore Error",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Save Recalculated Score": {
+        "main": [
+          [
+            {
+              "node": "Respond 200 Rescored",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      }
+    },
+    "nodeGroups": [],
+    "authors": "Jovial Rana",
+    "name": null,
+    "description": null,
+    "autosaved": false,
+    "createdAt": "2026-11-22T03:04:47.835Z",
+    "updatedAt": "2026-11-22T03:04:47.835Z",
+    "workflowPublishHistory": [
+      {
+        "id": 1496,
+        "workflowId": "oRmS31cJqbOcTmQ4",
+        "versionId": "497d8f90-0b4f-4416-b12c-7deed661dcaa",
+        "event": "activated",
+        "userId": "2aa60732-fcb1-4192-9d84-de4bc46532fc",
+        "createdAt": "2026-11-22T03:04:48.003Z"
+      }
+    ]
+  },
+  "parentFolder": null
 }

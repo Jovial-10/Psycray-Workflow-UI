@@ -1,3 +1,4 @@
+import { useEffect, useRef, useState } from "react"
 import { ArrowLeft, Globe, RotateCw, SearchX } from "lucide-react"
 import { Link, useLocation, useNavigate, useParams } from "react-router"
 import { EmptyState } from "@/components/common/EmptyState"
@@ -6,15 +7,19 @@ import { ResultSkeleton } from "@/components/research/ResultSkeleton"
 import { Button } from "@/components/ui/button"
 import { useCompanies } from "@/hooks/useCompanies"
 import { retryPath } from "@/lib/companies"
+import { api } from "@/services/api"
+import type { CompanyResearchRecord } from "@/types/research"
 
 /**
  * One company's saved research, read from the database (never re-run).
- * Refresh hands off to Company Research with the cache skipped.
+ * - Recalculate: re-scores the saved evidence (no research, no LLM).
+ * - Refresh: hands off to Company Research with the cache skipped.
  */
 export function CompanyDetailPage() {
   const { domain = "" } = useParams()
   const navigate = useNavigate()
   const companies = useCompanies()
+  const recalc = useRecalculate(domain)
 
   // Return to the exact list view the company was opened from (filters included)
   const state: unknown = useLocation().state
@@ -60,7 +65,8 @@ export function CompanyDetailPage() {
     )
   }
 
-  const record = companies.list.records.find((r) => r.domain === domain)
+  const saved = companies.list.records.find((r) => r.domain === domain)
+  const record = recalc.record ?? saved
 
   return (
     <div className="space-y-6">
@@ -101,8 +107,57 @@ export function CompanyDetailPage() {
           }
         />
       ) : (
-        <ResearchResult saved record={record} refreshing={false} onRefresh={() => navigate(retryPath(domain))} />
+        <ResearchResult
+          saved
+          record={record}
+          refreshing={false}
+          onRefresh={() => navigate(retryPath(domain))}
+          onRecalculate={recalc.run}
+          recalculating={recalc.pending}
+          recalcError={recalc.error}
+        />
       )}
     </div>
   )
+}
+
+/**
+ * Recalculates the score for one domain. Ignores repeat clicks while a
+ * request is running, and drops responses that arrive after the user has
+ * moved to another company (no stale updates).
+ */
+function useRecalculate(domain: string) {
+  const [state, setState] = useState<{
+    domain: string
+    record: CompanyResearchRecord | null
+    pending: boolean
+    error: string | null
+  }>({ domain, record: null, pending: false, error: null })
+  const latest = useRef(0)
+  const current = useRef(domain)
+
+  useEffect(() => {
+    current.current = domain
+    latest.current++ // invalidate anything in flight for the previous company
+  }, [domain])
+
+  const own = state.domain === domain ? state : { domain, record: null, pending: false, error: null }
+
+  function run() {
+    if (own.pending) return
+    const id = ++latest.current
+    setState({ ...own, pending: true, error: null })
+    api.recalculateScore(domain).then(
+      ({ record }) => {
+        if (id !== latest.current || current.current !== domain) return
+        setState({ domain, record, pending: false, error: null })
+      },
+      (err: unknown) => {
+        if (id !== latest.current || current.current !== domain) return
+        setState({ ...own, pending: false, error: err instanceof Error ? err.message : "Recalculation failed." })
+      },
+    )
+  }
+
+  return { record: own.record, pending: own.pending, error: own.error, run }
 }

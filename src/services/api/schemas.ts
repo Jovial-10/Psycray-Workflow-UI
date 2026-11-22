@@ -2,6 +2,9 @@ import { z } from "zod"
 import type {
   CompanyResearchRecord,
   CustomerType,
+  IcpCriterionScore,
+  IcpScoring,
+  RescoreResponse,
   ResearchJob,
   ResearchJobSummary,
   StartResearchResponse,
@@ -59,13 +62,92 @@ const synthesizedResearch = z.object({
     .catch([]),
 })
 
+const evidenceRef = z.object({
+  text: z.string().catch(""),
+  source: z.string().catch(""),
+  verified: z.boolean().catch(false),
+})
+
 const icpCriterion = z.object({
   criterion: z.string(),
   score: z.number(),
   max: z.number(),
-  status: z.enum(["met", "not_met", "unknown"]),
+  // Unrecognised statuses from a newer engine read as "unknown" rather than failing
+  status: z.enum(["met", "partial", "not_met", "unknown", "conflicting"]).catch("unknown"),
   reason: z.string().catch(""),
-})
+  evidence: z.array(evidenceRef).catch([]),
+}) satisfies z.ZodType<IcpCriterionScore>
+
+const num = z.number().nullable().catch(null)
+
+/**
+ * `company_research.icp_breakdown`: { criteria, ...scoring metadata }.
+ * Legacy keyword scores only have `criteria`; they get no metadata.
+ */
+const storedBreakdown = z
+  .object({
+    criteria: z.array(icpCriterion),
+    algorithm_version: z.string().optional().catch(undefined),
+    config_version: str.optional(),
+    weights: z.record(z.string(), z.number()).nullable().optional().catch(null),
+    coverage: num.optional(),
+    max_possible: num.optional(),
+    missing: strList.optional(),
+    snapshot_id: str.optional(),
+    evidence_fingerprint: str.optional(),
+    calculated_at: str.optional(),
+    previous: z
+      .object({
+        score: num,
+        tier: str,
+        calculated_at: str.optional().transform((v) => v ?? null),
+        algorithm_version: z.string().catch("1-keyword"),
+      })
+      .nullable()
+      .optional()
+      .catch(null),
+    change: z
+      .object({
+        previous_score: num,
+        updated_score: num,
+        delta: num,
+        reasons: strList,
+        criteria: z
+          .array(z.object({ criterion: z.string(), previous: num, updated: z.number(), delta: num }))
+          .catch([]),
+      })
+      .nullable()
+      .optional()
+      .catch(null),
+  })
+  .nullable()
+  .optional()
+  .catch(null)
+  .transform((v): { criteria: IcpCriterionScore[] | null; scoring: IcpScoring | null } => {
+    if (!v) return { criteria: null, scoring: null }
+    if (!v.algorithm_version) return { criteria: v.criteria, scoring: null }
+    return {
+      criteria: v.criteria,
+      scoring: {
+        algorithm_version: v.algorithm_version,
+        config_version: v.config_version ?? null,
+        weights: v.weights ?? null,
+        coverage: v.coverage ?? null,
+        max_possible: v.max_possible ?? null,
+        missing: v.missing ?? [],
+        snapshot_id: v.snapshot_id ?? null,
+        evidence_fingerprint: v.evidence_fingerprint ?? null,
+        calculated_at: v.calculated_at ?? null,
+        previous: v.previous ?? null,
+        change: v.change ?? null,
+      },
+    }
+  })
+
+/** Splits a stored `icp_breakdown` into scorecard rows and scoring metadata. */
+export function parseStoredBreakdown(value: unknown) {
+  return storedBreakdown.parse(value)
+}
 
 const companyResearchRecord = z.object({
   id: z.number(),
@@ -81,15 +163,14 @@ const companyResearchRecord = z.object({
   sources: z.object({ urls: strList }).nullable().catch(null),
   icp_score: z.number().nullable().catch(null),
   icp_tier: icpTier.nullable().catch(null),
-  // Stored as { criteria: [...] } (the n8n Postgres node rejects bare arrays)
-  icp_breakdown: z
-    .object({ criteria: z.array(icpCriterion) })
-    .nullable()
-    .optional()
-    .catch(null)
-    .transform((v) => v?.criteria ?? null),
+  // Stored as an object (the n8n Postgres node rejects bare arrays)
+  icp_breakdown: storedBreakdown,
   account_brief: str,
-})
+}).transform(({ icp_breakdown, ...rest }): CompanyResearchRecord => ({
+  ...rest,
+  icp_breakdown: icp_breakdown.criteria,
+  icp_scoring: icp_breakdown.scoring,
+}))
 
 export const startResearchResponseSchema = z.object({
   job_id: z.string().min(1),
@@ -135,6 +216,11 @@ const researchJobSummary = z.object({
 export const companyListSchema = z.object({
   records: lenientList<CompanyResearchRecord>(companyResearchRecord, "company record"),
 })
+
+/** Reply to `POST /api/research/rescore`. */
+export const rescoreResponseSchema = z.object({
+  record: companyResearchRecord,
+}) satisfies z.ZodType<RescoreResponse>
 
 /** Reply to `GET /api/research/jobs`. */
 export const researchJobListSchema = z.object({

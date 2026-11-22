@@ -1,4 +1,6 @@
-import { mockCompanies } from "@/mocks/companies"
+import { evaluate, summarizeStored } from "@/lib/scoring/icpEngine"
+import { mockCompanies, mockEvidence } from "@/mocks/companies"
+import { parseStoredBreakdown } from "./schemas"
 import { mockResearchJobs } from "@/mocks/researchJobs"
 import type { ResearchJob, ResearchJobStatus } from "@/types/research"
 import { ApiError, type ResearchApi } from "./types"
@@ -98,5 +100,26 @@ export const mockResearchApi: ResearchApi = {
       error: ERRORS[outcome.status] ?? null,
       updated_at: new Date().toISOString(),
     })
+  },
+
+  /** Same engine and rules as the n8n "Recalculate Score" node. */
+  async recalculateScore(domain) {
+    const index = mockCompanies.findIndex((c) => c.domain === domain && c.status === "validated")
+    if (index === -1) throw new ApiError("No saved research for this domain.", 404)
+    const record = mockCompanies[index]
+    const evidence = mockEvidence.get(domain)
+    if (!evidence) {
+      throw new ApiError("This research predates evidence-based scoring. Refresh it once to collect scoring evidence.", 409)
+    }
+    const previous = summarizeStored({ ...record.icp_scoring, criteria: record.icp_breakdown }, record.icp_score, record.icp_tier)
+    const result = evaluate(evidence, {
+      snapshot_id: record.icp_scoring?.snapshot_id ?? null,
+      calculated_at: new Date().toISOString(),
+      previous,
+    })
+    const { criteria, scoring } = parseStoredBreakdown(result)
+    const updated = { ...record, icp_score: result.score, icp_tier: result.tier, icp_breakdown: criteria, icp_scoring: scoring }
+    mockCompanies[index] = updated
+    return delay({ record: updated })
   },
 }

@@ -2,6 +2,7 @@ import type { z } from "zod"
 import {
   companyListSchema,
   researchJobListSchema,
+  rescoreResponseSchema,
   researchJobSchema,
   startResearchResponseSchema,
 } from "./schemas"
@@ -64,5 +65,13 @@ export const httpResearchApi: ResearchApi = {
   async listResearchJobs() {
     const { jobs } = await request("/research/jobs", researchJobListSchema)
     return { jobs, source: "live" as const }
+  },
+
+  recalculateScore(domain) {
+    return request("/research/rescore", rescoreResponseSchema, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ domain }),
+    })
   },
 }

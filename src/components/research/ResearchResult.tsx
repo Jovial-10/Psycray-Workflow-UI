@@ -1,12 +1,14 @@
-import { ExternalLink, RefreshCw } from "lucide-react"
+import { Calculator, ExternalLink, RefreshCw } from "lucide-react"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
+import { Card, CardAction, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
+import type { EvidenceRef } from "@/lib/scoring/icpEngine"
 import { cn } from "@/lib/utils"
 import type {
   CompanyFacts,
   CompanyResearchRecord,
   IcpCriterionScore,
+  IcpScoring,
   IcpTier,
 } from "@/types/research"
 import { BriefText } from "./BriefText"
@@ -18,9 +20,21 @@ interface ResearchResultProps {
   record: CompanyResearchRecord
   onRefresh: () => void
   refreshing: boolean
+  /** Re-score saved evidence (company page only). */
+  onRecalculate?: () => void
+  recalculating?: boolean
+  recalcError?: string | null
 }
 
-export function ResearchResult({ saved, record, onRefresh, refreshing }: ResearchResultProps) {
+export function ResearchResult({
+  saved,
+  record,
+  onRefresh,
+  refreshing,
+  onRecalculate,
+  recalculating,
+  recalcError,
+}: ResearchResultProps) {
   const facts = isParsedFacts(record.company_facts) ? record.company_facts : null
   const synthesis = record.synthesized_research
   const name = synthesis?.company_name || facts?.company_name || record.domain
@@ -52,7 +66,15 @@ export function ResearchResult({ saved, record, onRefresh, refreshing }: Researc
 
       <div className="grid items-start gap-6 lg:grid-cols-[1fr_20rem]">
         <CompanyProfile facts={facts} summary={synthesis?.summary} unknowns={synthesis?.unknowns ?? []} />
-        <IcpScorecard score={record.icp_score} tier={record.icp_tier} breakdown={record.icp_breakdown} />
+        <IcpScorecard
+          score={record.icp_score}
+          tier={record.icp_tier}
+          breakdown={record.icp_breakdown}
+          scoring={record.icp_scoring}
+          onRecalculate={onRecalculate}
+          recalculating={recalculating}
+          recalcError={recalcError}
+        />
       </div>
 
       <Card>
@@ -131,30 +153,81 @@ function CompanyProfile({
 
 const statusLabel: Record<IcpCriterionScore["status"], string> = {
   met: "Met",
+  partial: "Partly met",
   not_met: "Not met",
   unknown: "Unknown",
+  conflicting: "Conflicting sources",
 }
 
-function IcpScorecard({
-  score,
-  tier,
-  breakdown,
-}: {
+interface ScorecardProps {
   score: number | null
   tier: IcpTier | null
   breakdown: IcpCriterionScore[] | null
-}) {
+  scoring: IcpScoring | null
+  onRecalculate?: () => void
+  recalculating?: boolean
+  recalcError?: string | null
+}
+
+function IcpScorecard({ score, tier, breakdown, scoring, onRecalculate, recalculating, recalcError }: ScorecardProps) {
+  const change = scoring?.change
+  const showChange = change && change.previous_score !== null && change.reasons.length > 0
   return (
     <Card>
       <CardHeader>
         <CardTitle>ICP Score</CardTitle>
+        {onRecalculate && scoring && (
+          <CardAction>
+            <Button
+              variant="ghost"
+              size="xs"
+              onClick={onRecalculate}
+              disabled={recalculating}
+              title="Score the saved evidence again with the current ICP settings. No new research."
+            >
+              <Calculator className={cn(recalculating && "animate-pulse")} />
+              {recalculating ? "Recalculating…" : "Recalculate"}
+            </Button>
+          </CardAction>
+        )}
       </CardHeader>
       <CardContent className="space-y-4">
-        <div className="flex items-baseline gap-2">
-          <span className="text-4xl font-semibold tabular-nums">{score ?? "—"}</span>
-          <span className="text-sm text-muted-foreground">/ 100</span>
-          {tier && <FitBadge tier={tier} className="ml-auto self-center" />}
+        <div>
+          <div className="flex items-baseline gap-2">
+            <span className="text-4xl font-semibold tabular-nums">{score ?? "—"}</span>
+            <span className="text-sm text-muted-foreground">/ 100</span>
+            {tier && <FitBadge tier={tier} className="ml-auto self-center" />}
+          </div>
+          {scoring?.coverage != null && scoring.coverage < 100 && (
+            <p className="mt-1 text-xs text-muted-foreground">
+              {scoring.coverage}% of the score had evidence. Up to {scoring.max_possible} if the unknowns are met.
+            </p>
+          )}
         </div>
+
+        {recalcError && (
+          <p role="alert" className="rounded-md border border-danger-border bg-danger-soft px-3 py-2 text-xs text-danger-foreground">
+            {recalcError}
+          </p>
+        )}
+
+        {showChange && (
+          <div className="space-y-1.5 rounded-md border bg-muted/40 px-3 py-2.5 text-xs">
+            <p className="flex flex-wrap gap-x-3 gap-y-0.5 tabular-nums">
+              <span>
+                Previous score: <span className="font-medium text-foreground">{change.previous_score}</span>
+              </span>
+              <span>
+                Updated score: <span className="font-medium text-foreground">{change.updated_score}</span>
+              </span>
+            </p>
+            <ul className="space-y-1 text-muted-foreground">
+              {change.reasons.map((r) => (
+                <li key={r}>{r}</li>
+              ))}
+            </ul>
+          </div>
+        )}
 
         {breakdown && breakdown.length > 0 ? (
           <ul className="space-y-3 text-sm">
@@ -168,14 +241,20 @@ function IcpScorecard({
                 </div>
                 <div className="mt-1 h-1.5 overflow-hidden rounded-full bg-muted">
                   <div
-                    className={cn("h-full rounded-full", c.status === "unknown" ? "bg-transparent" : "bg-foreground/80")}
+                    className={cn(
+                      "h-full rounded-full",
+                      c.status === "unknown" ? "bg-transparent" : c.status === "conflicting" ? "bg-warning" : "bg-foreground/80",
+                    )}
                     style={{ width: `${c.max ? (c.score / c.max) * 100 : 0}%` }}
                   />
                 </div>
                 <p className="mt-1 text-xs text-muted-foreground">
-                  <span className={cn(c.status === "unknown" && "italic")}>{statusLabel[c.status]}</span>
+                  <span className={cn(c.status === "unknown" && "italic", c.status === "conflicting" && "text-warning-foreground")}>
+                    {statusLabel[c.status]}
+                  </span>
                   {c.reason && ` · ${c.reason}`}
                 </p>
+                {c.evidence.length > 0 && <EvidenceList items={c.evidence} />}
               </li>
             ))}
           </ul>
@@ -184,8 +263,58 @@ function IcpScorecard({
             No score breakdown is stored for this research. Refresh it to generate an explainable scorecard.
           </p>
         )}
+
+        {scoring && scoring.missing.length > 0 && (
+          <div className="text-xs">
+            <p className="font-medium">Missing information</p>
+            <ul className="mt-1 list-disc space-y-0.5 pl-4 text-muted-foreground">
+              {scoring.missing.map((m) => (
+                <li key={m}>{m}</li>
+              ))}
+            </ul>
+          </div>
+        )}
+
+        <p className="border-t pt-3 text-xs text-muted-foreground">
+          {scoring ? (
+            <>
+              Scoring v{scoring.algorithm_version} · ICP {scoring.config_version ?? "unknown"}
+              {scoring.snapshot_id && <> · research {scoring.snapshot_id}</>}
+              {scoring.calculated_at && <> · calculated {formatDate(scoring.calculated_at)}</>}
+            </>
+          ) : (
+            "Scored with the earlier keyword rules. Refresh the research to rescore it from evidence."
+          )}
+        </p>
       </CardContent>
     </Card>
+  )
+}
+
+function EvidenceList({ items }: { items: EvidenceRef[] }) {
+  return (
+    <ul className="mt-1.5 space-y-1 border-l pl-2.5 text-xs text-muted-foreground">
+      {items.slice(0, 3).map((e) => (
+        <li key={`${e.text}|${e.source}`}>
+          <span className="text-foreground/80">“{e.text}”</span>{" "}
+          {e.source && (
+            <SourceLink source={e.source} />
+          )}
+          {!e.verified && <span className="italic"> (unverified source)</span>}
+        </li>
+      ))}
+    </ul>
+  )
+}
+
+function SourceLink({ source }: { source: string }) {
+  const host = source.replace(/^https?:\/\//, "").replace(/^www\./, "").split("/")[0]
+  return /^https?:\/\//.test(source) ? (
+    <a href={source} target="_blank" rel="noreferrer" className="font-mono underline decoration-border underline-offset-2 hover:text-foreground">
+      {host}
+    </a>
+  ) : (
+    <span className="font-mono">{host}</span>
   )
 }
 

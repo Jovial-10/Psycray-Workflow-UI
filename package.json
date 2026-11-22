@@ -7,7 +7,9 @@
     "dev": "vite",
     "build": "tsc -b && vite build",
     "lint": "oxlint",
-    "preview": "vite preview"
+    "preview": "vite preview",
+    "test": "node --test --disable-warning=ExperimentalWarning 'tests/**/*.test.ts'",
+    "sync:n8n": "node scripts/n8n-scoring.ts"
   },
   "dependencies": {
     "@fontsource-variable/geist": "^5.3.0",

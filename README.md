@@ -44,6 +44,8 @@ set, with a "Sample data" notice.
 | `npm run build`   | Type-check (`tsc -b`) and build to `dist/`       |
 | `npm run preview` | Serve the production build locally               |
 | `npm run lint`    | Lint with oxlint                                 |
+| `npm test`        | ICP scoring regression tests (`node --test`)     |
+| `npm run sync:n8n` | Regenerate n8n scoring nodes from the engine    |
 
 ---
 
@@ -190,26 +192,33 @@ mapping layer.
 | `CompanyResearchRecord`  | `company_research` table (Neon Postgres)           |
 | `ResearchJob`, `ResearchJobStatus` | `research_jobs` table / status endpoint  |
 
-### ICP scoring (reference)
+### ICP scoring
 
-The workflow starts each company at **20** and adds points, capped at 100:
+One deterministic engine, [`src/lib/scoring/icpEngine.ts`](src/lib/scoring/icpEngine.ts),
+scores every company: in n8n (research and recalculation), in the tests and in
+the mock data. The LLM only **classifies evidence** (industry category,
+headcounts, stated or inferred needs, growth signals, project owners), each
+with a quote and a source. The engine turns that into points. Same evidence +
+same config + same algorithm version → same score.
 
-| Signal                                           | Points |
-| ------------------------------------------------ | ------ |
-| SaaS / software / technology vertical            | +35    |
-| Manufacturing / industrial / logistics (else-if) | +30    |
-| Workflow, automation, portal or integration need | +25    |
-| Growth: hiring, funding, partnership, expansion  | +20    |
+| Criterion           | Weight | Full points when…                                         |
+| ------------------- | -----: | --------------------------------------------------------- |
+| Industry Fit        |    20% | the company's **own** industry is a core vertical         |
+| Company Size        |    15% | 10–50 employees (51–250 scores 70%)                       |
+| Digital Opportunity |    30% | a source **states** a workflow/integration/portal need    |
+| Growth Signals      |    25% | verified signals about this company in the last 18 months |
+| Project Ownership   |    10% | a named technical/product/ops owner or in-house team      |
 
-**High Fit** ≥ 80 · **Moderate Fit** ≥ 55 · **Low Fit** < 55 ·
-**Needs Review** when the synthesis is not valid JSON. Each criterion is
-returned with its score, maximum and status (`met`, `not_met` or `unknown`),
-so the UI can explain the score.
+No evidence → **unknown** (0 points, listed as missing, not a failure).
+**High Fit** ≥ 80 · **Moderate Fit** ≥ 55 · **Low Fit** < 55 · **Needs Review**
+when under 50% of the weight had evidence. After editing the engine, run
+`npm run sync:n8n` to regenerate the n8n Code nodes (the tests fail until you do).
 
 ### Caching
 
 The workflow reuses a `validated` record if it is less than **30 days** old.
-Domains it cannot reach are stored with status `error/unreachable`.
+Domains it cannot reach are stored with status `error/unreachable`, unless
+validated research already exists: a failed refresh never overwrites it.
 
 ---
 

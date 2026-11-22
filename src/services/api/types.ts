@@ -1,5 +1,6 @@
 import type {
   CompanyList,
+  RescoreResponse,
   ResearchJob,
   ResearchJobList,
   ResearchRequest,
@@ -23,6 +24,12 @@ export interface ResearchApi {
 
   /** Recent research requests and their outcomes, newest first. */
   listResearchJobs(): Promise<ResearchJobList>
+
+  /**
+   * Re-score saved research with the current ICP configuration.
+   * Uses the stored evidence only: no new research, no LLM calls.
+   */
+  recalculateScore(domain: string): Promise<RescoreResponse>
 }
 
 /** A failed API call, with a message that is safe to show to users. */

@@ -24,6 +24,7 @@ n8n webhooks (Header Auth)
    └─ Psycray Research API              GET   /research/status   → job + result
                                         GET   /companies         → saved research (history)
                                         GET   /research/jobs     → recent requests (activity)
+                                        POST  /research/rescore  → re-score saved evidence
                                         Error Trigger            → marks job failed
    ▼
 Neon Postgres                           company_research · research_jobs
@@ -107,6 +108,30 @@ and Saved Companies read this list, so opening a company never re-runs research.
 Jobs stuck in `running` for over 10 minutes are reported as `failed`, the same
 as `/research/status`.
 
+### `POST /research/rescore`
+
+```jsonc
+// Request
+{ "domain": "basecamp.com" }
+// 200 OK: the saved row with the new score. No research, no LLM calls.
+{ "record": { "domain": "basecamp.com", "icp_score": 78, "icp_breakdown": { "criteria": [ … ], "change": { … } }, … } }
+// 404 no validated research · 409 research predates evidence-based scoring (refresh once)
+```
+
+Re-scores the evidence saved with the research (`synthesized_research.icp_evidence`)
+using the same engine as fresh research, appends a row to `icp_score_history`
+and updates the score in `company_research`. `updated_at` (the research date)
+does not change.
+
+### Scoring record (`company_research.icp_breakdown`)
+
+`{ criteria, score, tier, coverage, max_possible, missing, weights,
+algorithm_version, config_version, snapshot_id, evidence_fingerprint,
+calculated_at, previous, change }`. `change.reasons` is built by the engine from
+the differences between the two scores (criterion points, statuses, evidence
+items, versions), never written by the LLM. Every score is also appended to
+`icp_score_history` ([002](../n8n/sql/002_icp_score_history.sql)).
+
 The frontend checks every response with zod (`src/services/api/schemas.ts`).
 Fields the LLM wrote are parsed leniently: a malformed value falls back to
 empty instead of failing the whole result. The list endpoints validate row by
@@ -122,7 +147,7 @@ Agent** workflow is not modified. v2 is imported as a separate workflow.
 
 | # | Step | Where |
 | - | ---- | ----- |
-| 1 | Run [`n8n/sql/001_research_jobs.sql`](../n8n/sql/001_research_jobs.sql) | Neon SQL editor |
+| 1 | Run [`n8n/sql/001_research_jobs.sql`](../n8n/sql/001_research_jobs.sql) and [`002_icp_score_history.sql`](../n8n/sql/002_icp_score_history.sql) | Neon SQL editor |
 | 2 | Create a **Header Auth** credential: name `X-Psycray-Key`, value a long random secret (e.g. `openssl rand -hex 32`) | n8n → Credentials |
 | 3 | Import [`psycray-research-api.json`](../n8n/workflows/psycray-research-api.json) | n8n → Import from File |
 | 4 | Import [`psycray-research-agent-v2.json`](../n8n/workflows/psycray-research-agent-v2.json) | n8n → Import from File |
