@@ -33,6 +33,14 @@ colors:
   fit-low-ink: "oklch(0.444 0.177 26.899)"
   fit-low-soft: "oklch(0.971 0.013 17.38)"
   fit-low-border: "oklch(0.885 0.062 18.334)"
+  compare-before: "oklch(0.62 0.11 236)"
+  compare-before-ink: "oklch(0.44 0.09 238)"
+  compare-before-soft: "oklch(0.977 0.013 236)"
+  compare-before-border: "oklch(0.885 0.045 236)"
+  compare-after: "oklch(0.5 0.17 274)"
+  compare-after-ink: "oklch(0.42 0.16 274)"
+  compare-after-soft: "oklch(0.968 0.02 274)"
+  compare-after-border: "oklch(0.86 0.06 274)"
 typography:
   headline:
     fontFamily: "Geist Variable, ui-sans-serif, system-ui, sans-serif"
@@ -198,6 +206,13 @@ Each verdict hue has four roles: solid (dots and icons), ink (badge text), soft 
 - **Verdict Red** (`fit-low`, red-600): Low Fit, errors, destructive actions.
 - **Needs Review** uses the neutral muted pair (`zinc-wash` fill, `zinc-muted-ink` text and dot), never a hue.
 
+### Comparison pair (before / after)
+Added 2026-11-22 at the user's request, to make two versions of a score or configuration easy to tell apart.
+- **Before: Sky** (`compare-before`, sky-600 softened): current, published, previous.
+- **After: Indigo** (`compare-after`, the primary hue): proposed, draft, updated, the side you would act on.
+- Each has solid (dots), ink (labels and values), soft (tile and column fill) and border roles; in dark mode soft and border become 12–14% and 30–34% alpha, and ink moves to the 300 step. Tokens: `bg-before-soft`, `text-after-foreground`, etc.; component helpers `SIDE` (`src/lib/compare.ts`) and `SideLabel`.
+- Used for: the ICP Studio preview and proposal simulation (score tiles and criterion columns), the assistant's current/proposed table, and the scorecard's previous/updated tiles. Changed values on the "after" side are semibold in after-ink.
+
 ### Neutral
 - **Zinc Ground** (`zinc-ground`, #fafafa): the light page and sidebar background.
 - **Card White** (`card-white`): cards, inputs and outline buttons in light mode.
@@ -209,7 +224,9 @@ Each verdict hue has four roles: solid (dots and icons), ink (badge text), soft 
 - **Dark theme**: `zinc-night` ground (zinc-950), `zinc-night-surface` cards (zinc-900), `zinc-night-hairline` borders (zinc-800), `zinc-night-field-stroke` inputs (zinc-700), `zinc-night-muted-ink` (zinc-400), `zinc-night-ink` text (zinc-50).
 
 ### Named Rules
-**The Meaningful Saturation Rule.** Chrome is monochrome. A saturated color on screen is either indigo (act here, focus, where you are) or a verdict hue. Nothing decorative is colored.
+**The Meaningful Saturation Rule.** Chrome is monochrome. A saturated color on screen is indigo (act here, focus, where you are), a verdict hue, or the comparison pair (sky = before, indigo = after) on a side-by-side comparison. Nothing decorative is colored.
+
+**The Comparison Pair Rule.** Sky and indigo appear only together, only where two versions are compared, always with a written label ("Current", "Proposed"…) and a dot; color is never the only signal. Fit badges keep their verdict colors inside comparison tiles.
 
 **The Verdict Palette Rule.** Emerald, amber and red mean High, Moderate and Low Fit (and success, warning, error). Never use them for decoration, and never show Needs Review or "unknown" in a verdict hue; unknown is not failure.
 

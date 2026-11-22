@@ -2,7 +2,9 @@ import { ArrowRight } from "lucide-react"
 import { FitBadge } from "@/components/research/FitBadge"
 import { QualificationBadge } from "@/components/research/QualificationBadge"
 import type { IcpScoreResult } from "@/lib/scoring/icpEngine"
+import { SIDE } from "@/lib/compare"
 import { cn } from "@/lib/utils"
+import { SideLabel } from "@/components/common/SideLabel"
 
 interface Props {
   before: IcpScoreResult
@@ -43,19 +45,13 @@ export function ScoreComparison({
 }: Props) {
   return (
     <>
-    <div className="grid grid-cols-[1fr_auto_1fr] items-end gap-3" aria-live="polite">
-      <Score label={beforeLabel} sub={beforeSub} mono={beforeSubMono} score={before.score} tier={before.tier} />
-      <ArrowRight aria-hidden className="mb-3 size-4 text-muted-foreground" />
+    <div className="grid grid-cols-[minmax(0,1fr)_auto_minmax(0,1fr)] items-stretch gap-2" aria-live="polite">
+      <Score side="before" label={beforeLabel} sub={beforeSub} mono={beforeSubMono} score={before.score} tier={before.tier} />
+      <ArrowRight aria-hidden className="size-4 self-center text-muted-foreground" />
       {after ? (
-        <Score
-          label={afterLabel}
-          sub={delta(after.score - before.score)}
-          score={after.score}
-          tier={after.tier}
-          emphasis
-        />
+        <Score side="after" label={afterLabel} sub={delta(after.score - before.score)} score={after.score} tier={after.tier} />
       ) : (
-        <p className="pb-2 text-xs text-muted-foreground">{invalidText}</p>
+        <p className="flex items-center rounded-lg border border-dashed border-after-border p-3 text-xs text-muted-foreground">{invalidText}</p>
       )}
     </div>
 
@@ -85,13 +81,17 @@ export function ScoreComparison({
           )}
         </div>
 
-        <table className="w-full text-xs tabular-nums">
+        <table className="w-full border-separate border-spacing-x-1 border-spacing-y-0 text-xs tabular-nums">
           <caption className="sr-only">Criterion points, {beforeLabel.toLowerCase()} and {afterLabel.toLowerCase()}</caption>
           <thead className="text-muted-foreground">
             <tr>
-              <th scope="col" className="pb-1 text-left font-normal">Criterion</th>
-              <th scope="col" className="pb-1 text-right font-normal">{beforeLabel}</th>
-              <th scope="col" className="pb-1 text-right font-normal">{afterLabel}</th>
+              <th scope="col" className="pb-1.5 text-left font-normal">Criterion</th>
+              <th scope="col" className={cn("rounded-t-md px-2 pt-1.5 pb-1.5 text-right font-normal whitespace-nowrap", SIDE.before.cell)}>
+                <SideLabel side="before">{beforeLabel}</SideLabel>
+              </th>
+              <th scope="col" className={cn("rounded-t-md px-2 pt-1.5 pb-1.5 text-right font-normal whitespace-nowrap", SIDE.after.cell)}>
+                <SideLabel side="after">{afterLabel}</SideLabel>
+              </th>
             </tr>
           </thead>
           <tbody>
@@ -104,10 +104,10 @@ export function ScoreComparison({
                     {c.criterion}
                     {c.status === "unknown" && <span className="text-muted-foreground italic"> · unknown</span>}
                   </th>
-                  <td className="py-1.5 text-right text-muted-foreground">
+                  <td className={cn("px-2 py-1.5 text-right whitespace-nowrap", SIDE.before.cell, SIDE.before.ink)}>
                     {prev.score} / {prev.max}
                   </td>
-                  <td className={cn("py-1.5 text-right", changed && "font-medium")}>
+                  <td className={cn("px-2 py-1.5 text-right whitespace-nowrap", SIDE.after.cell, changed && cn("font-semibold", SIDE.after.ink))}>
                     {c.score} / {c.max}
                   </td>
                 </tr>
@@ -115,8 +115,8 @@ export function ScoreComparison({
             })}
             <tr className="border-t">
               <th scope="row" className="py-1.5 text-left font-normal">Baseline</th>
-              <td className="py-1.5 text-right text-muted-foreground">{before.baseline}</td>
-              <td className={cn("py-1.5 text-right", after.baseline !== before.baseline && "font-medium")}>
+              <td className={cn("rounded-b-md px-2 py-1.5 text-right whitespace-nowrap", SIDE.before.cell, SIDE.before.ink)}>{before.baseline}</td>
+              <td className={cn("rounded-b-md px-2 py-1.5 text-right whitespace-nowrap", SIDE.after.cell, after.baseline !== before.baseline && cn("font-semibold", SIDE.after.ink))}>
                 {after.baseline}
               </td>
             </tr>
@@ -164,24 +164,24 @@ export function ScoreComparison({
 }
 
 function Score({
+  side,
   label,
   sub,
   score,
   tier,
-  emphasis,
   mono,
 }: {
+  side: keyof typeof SIDE
   label: string
   sub: string
   score: number
   tier: Parameters<typeof FitBadge>[0]["tier"]
-  emphasis?: boolean
   mono?: boolean
 }) {
   return (
-    <div className="min-w-0 space-y-1">
-      <p className="text-xs text-muted-foreground">{label}</p>
-      <p className={cn("text-2xl font-semibold tracking-tight tabular-nums", !emphasis && "text-muted-foreground")}>{score}</p>
+    <div className={cn("min-w-0 space-y-1.5 rounded-lg border p-3", SIDE[side].tile)}>
+      <SideLabel side={side}>{label}</SideLabel>
+      <p className={cn("text-2xl font-semibold tracking-tight tabular-nums", SIDE[side].ink)}>{score}</p>
       <FitBadge tier={tier} />
       <p className={cn("truncate text-xs text-muted-foreground tabular-nums", mono && "font-mono")} title={sub}>
         {sub}

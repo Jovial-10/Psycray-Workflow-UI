@@ -78,6 +78,12 @@ Major changes and decisions, plus what comes next. Newest entries first.
 
 ## Log
 
+### 2026-11-22 · Colors for before/after comparisons
+
+- New comparison pair in the design system: **sky = current / published / previous**, **indigo = proposed / draft / updated** (light and dark tokens in `src/index.css`, documented in DESIGN.md)
+- Applied to the assistant's current-vs-proposed table, the Studio preview and simulation (tinted score tiles and criterion columns; changed values in bold indigo), and the company scorecard's previous → updated tiles
+- Checked in light, dark and at 390px (no overflow); fit badges keep their own colors
+
 ### 2026-11-22 · ICP assistant ("Describe your ideal customer") + archiving versions
 
 - **Panel in ICP Studio** (above Weights): type an instruction → *Propose changes* → review current vs proposed weights and baseline, other changes (industries, employee ranges before/after, requirements), notes to confirm, contradictions, unsupported parts, ignored invalid suggestions → optional simulation on a saved company → **Apply proposal** (updates the draft only), **Edit proposal** (change weights/baseline first), **Discard proposal**. Publishing stays the separate Publish step

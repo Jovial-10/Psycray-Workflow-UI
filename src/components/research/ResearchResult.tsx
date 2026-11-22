@@ -1,4 +1,4 @@
-import { Calculator, ExternalLink, RefreshCw } from "lucide-react"
+import { ArrowRight, Calculator, ExternalLink, RefreshCw } from "lucide-react"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { Card, CardAction, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
@@ -12,6 +12,8 @@ import type {
   IcpTier,
 } from "@/types/research"
 import { BriefText } from "./BriefText"
+import { SideLabel } from "@/components/common/SideLabel"
+import { SIDE } from "@/lib/compare"
 import { FitBadge } from "./FitBadge"
 import { QualificationBadge } from "./QualificationBadge"
 
@@ -248,15 +250,18 @@ function IcpScorecard({ score, tier, breakdown, scoring, onRecalculate, recalcul
         )}
 
         {showChange && (
-          <div className="space-y-1.5 rounded-md border bg-muted/40 px-3 py-2.5 text-xs">
-            <p className="flex flex-wrap gap-x-3 gap-y-0.5 tabular-nums">
-              <span>
-                Previous score: <span className="font-medium text-foreground">{change.previous_score}</span>
-              </span>
-              <span>
-                Updated score: <span className="font-medium text-foreground">{change.updated_score}</span>
-              </span>
-            </p>
+          <div className="space-y-3 rounded-md border bg-muted/40 px-3 py-2.5 text-xs">
+            <div className="grid grid-cols-[minmax(0,1fr)_auto_minmax(0,1fr)] items-stretch gap-2 tabular-nums">
+              <div className={cn("rounded-md border px-2.5 py-1.5", SIDE.before.tile)}>
+                <SideLabel side="before">Previous</SideLabel>
+                <p className={cn("text-lg font-semibold", SIDE.before.ink)}>{change.previous_score}</p>
+              </div>
+              <ArrowRight aria-hidden className="size-3.5 self-center text-muted-foreground" />
+              <div className={cn("rounded-md border px-2.5 py-1.5", SIDE.after.tile)}>
+                <SideLabel side="after">Updated</SideLabel>
+                <p className={cn("text-lg font-semibold", SIDE.after.ink)}>{change.updated_score}</p>
+              </div>
+            </div>
             {CHANGE_GROUPS.map(({ kind, label }) => {
               const items = change.details.filter((d) => d.kind === kind)
               if (items.length === 0) return null

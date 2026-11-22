@@ -13,6 +13,8 @@ import { cn } from "@/lib/utils"
 import { api, ApiError } from "@/services/api"
 import type { CompanyResearchRecord } from "@/types/research"
 import { NumberField } from "./fields"
+import { SideLabel } from "@/components/common/SideLabel"
+import { SIDE } from "@/lib/compare"
 import { ScoreComparison } from "./ScoreComparison"
 
 const EXAMPLES = [
@@ -179,13 +181,17 @@ export function AssistantPanel({ draft, onApply, companies, selectedDomain, onSe
             )}
 
             {/* Weights and baseline: current → proposed */}
-            <table className="w-full text-sm tabular-nums">
+            <table className="w-full border-separate border-spacing-x-1 border-spacing-y-0 text-sm tabular-nums">
               <caption className="sr-only">Weights and baseline, current and proposed</caption>
               <thead className="text-xs text-muted-foreground">
                 <tr>
-                  <th scope="col" className="pb-1 text-left font-normal">Setting</th>
-                  <th scope="col" className="pb-1 text-right font-normal">Current</th>
-                  <th scope="col" className="pb-1 text-right font-normal">Proposed</th>
+                  <th scope="col" className="pb-1.5 text-left font-normal">Setting</th>
+                  <th scope="col" className={cn("rounded-t-md px-2.5 pt-1.5 pb-1.5 text-right font-normal", SIDE.before.cell)}>
+                    <SideLabel side="before">Current</SideLabel>
+                  </th>
+                  <th scope="col" className={cn("rounded-t-md px-2.5 pt-1.5 pb-1.5 text-right font-normal", SIDE.after.cell)}>
+                    <SideLabel side="after">Proposed</SideLabel>
+                  </th>
                 </tr>
               </thead>
               <tbody>
@@ -195,8 +201,8 @@ export function AssistantPanel({ draft, onApply, companies, selectedDomain, onSe
                   return (
                     <tr key={key} className="border-t">
                       <th scope="row" className="py-1.5 text-left font-normal">{label}</th>
-                      <td className="py-1.5 text-right text-muted-foreground">{now}%</td>
-                      <td className={cn("py-1.5 text-right", next !== now && "font-medium")}>
+                      <td className={cn("px-2.5 py-1.5 text-right", SIDE.before.cell, SIDE.before.ink)}>{now}%</td>
+                      <td className={cn("px-2.5 py-1.5 text-right", SIDE.after.cell, next !== now && cn("font-semibold", SIDE.after.ink))}>
                         {editing ? (
                           <NumberField
                             label={`Proposed ${label} weight`}
@@ -216,13 +222,13 @@ export function AssistantPanel({ draft, onApply, companies, selectedDomain, onSe
                 })}
                 <tr className="border-t">
                   <th scope="row" className="py-1.5 text-left font-medium">Total</th>
-                  <td className="py-1.5 text-right text-muted-foreground">{totalWeight(current.weights)}%</td>
-                  <td className={cn("py-1.5 text-right font-medium", finalTotal !== 100 && "text-danger-foreground")}>{finalTotal}%</td>
+                  <td className={cn("px-2.5 py-1.5 text-right font-medium", SIDE.before.cell, SIDE.before.ink)}>{totalWeight(current.weights)}%</td>
+                  <td className={cn("px-2.5 py-1.5 text-right font-medium", SIDE.after.cell, finalTotal !== 100 ? "text-danger-foreground" : SIDE.after.ink)}>{finalTotal}%</td>
                 </tr>
                 <tr className="border-t">
                   <th scope="row" className="py-1.5 text-left font-normal">Baseline</th>
-                  <td className="py-1.5 text-right text-muted-foreground">{current.baseline}</td>
-                  <td className={cn("py-1.5 text-right", final.baseline !== current.baseline && "font-medium")}>
+                  <td className={cn("rounded-b-md px-2.5 py-1.5 text-right", SIDE.before.cell, SIDE.before.ink)}>{current.baseline}</td>
+                  <td className={cn("rounded-b-md px-2.5 py-1.5 text-right", SIDE.after.cell, final.baseline !== current.baseline && cn("font-semibold", SIDE.after.ink))}>
                     {editing ? (
                       <NumberField
                         label="Proposed baseline"
@@ -384,7 +390,7 @@ function OtherChanges({ current, next, changes }: { current: IcpConfig; next: Ic
       {bandsChanged && (
         <div className="grid gap-3 sm:grid-cols-2">
           <div>
-            <p className="font-medium">Employee ranges now</p>
+            <SideLabel side="before">Employee ranges now</SideLabel>
             <ul className="mt-1 space-y-0.5 text-muted-foreground tabular-nums">
               {current.sizeBands.map((b) => (
                 <li key={`${b.min}-${b.max}`}>{bandText(b)}</li>
@@ -392,7 +398,7 @@ function OtherChanges({ current, next, changes }: { current: IcpConfig; next: Ic
             </ul>
           </div>
           <div>
-            <p className="font-medium">Proposed</p>
+            <SideLabel side="after">Proposed</SideLabel>
             <ul className="mt-1 space-y-0.5 tabular-nums">
               {next.sizeBands.map((b) => (
                 <li key={`${b.min}-${b.max}`}>{bandText(b)}</li>

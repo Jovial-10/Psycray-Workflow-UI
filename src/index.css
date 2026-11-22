@@ -62,6 +62,15 @@
   --color-danger-soft: var(--danger-soft);
   --color-danger-border: var(--danger-border);
 
+  /* Comparison pair: "before" (current / published / previous) and "after" (proposed / draft / updated) */
+  --color-before: var(--before);
+  --color-before-foreground: var(--before-foreground);
+  --color-before-soft: var(--before-soft);
+  --color-before-border: var(--before-border);
+  --color-after: var(--after);
+  --color-after-foreground: var(--after-foreground);
+  --color-after-soft: var(--after-soft);
+  --color-after-border: var(--after-border);
   --color-chart-1: var(--chart-1);
   --color-chart-2: var(--chart-2);
   --color-chart-3: var(--chart-3);
@@ -116,6 +125,15 @@
   --danger-soft: oklch(0.971 0.013 17.38); /* red-50 */
   --danger-border: oklch(0.885 0.062 18.334); /* red-200 */
 
+  /* Comparison pair: sky = before, indigo = after (never a fit verdict) */
+  --before: oklch(0.62 0.11 236); /* sky-600, softened */
+  --before-foreground: oklch(0.44 0.09 238); /* sky-800 */
+  --before-soft: oklch(0.977 0.013 236); /* sky-50 */
+  --before-border: oklch(0.885 0.045 236); /* sky-200 */
+  --after: oklch(0.5 0.17 274); /* indigo, as primary */
+  --after-foreground: oklch(0.42 0.16 274);
+  --after-soft: oklch(0.968 0.02 274);
+  --after-border: oklch(0.86 0.06 274);
   --chart-1: oklch(0.45 0.17 274);
   --chart-2: oklch(0.596 0.145 163.225);
   --chart-3: oklch(0.666 0.179 58.318);
@@ -169,6 +187,14 @@
   --danger-soft: oklch(0.637 0.237 25.331 / 0.12);
   --danger-border: oklch(0.637 0.237 25.331 / 0.3);
 
+  --before: oklch(0.72 0.11 236);
+  --before-foreground: oklch(0.83 0.08 236); /* sky-300 */
+  --before-soft: oklch(0.72 0.11 236 / 0.12);
+  --before-border: oklch(0.72 0.11 236 / 0.3);
+  --after: oklch(0.62 0.15 274);
+  --after-foreground: oklch(0.8 0.1 274); /* indigo-300 */
+  --after-soft: oklch(0.62 0.15 274 / 0.14);
+  --after-border: oklch(0.62 0.15 274 / 0.34);
   --chart-1: oklch(0.54 0.16 274);
   --chart-2: oklch(0.696 0.17 162.48);
   --chart-3: oklch(0.769 0.188 70.08);
