@@ -13,6 +13,7 @@ import type {
 } from "@/types/research"
 import { BriefText } from "./BriefText"
 import { SideLabel } from "@/components/common/SideLabel"
+import { ChangeText, ChangeValue } from "@/components/common/ChangeValue"
 import { SIDE } from "@/lib/compare"
 import { FitBadge } from "./FitBadge"
 import { QualificationBadge } from "./QualificationBadge"
@@ -260,6 +261,12 @@ function IcpScorecard({ score, tier, breakdown, scoring, onRecalculate, recalcul
               <div className={cn("rounded-md border px-2.5 py-1.5", SIDE.after.tile)}>
                 <SideLabel side="after">Updated</SideLabel>
                 <p className={cn("text-lg font-semibold", SIDE.after.ink)}>{change.updated_score}</p>
+                {change.delta !== null && change.delta !== 0 && (
+                  <ChangeValue before={0} after={change.delta} className="text-xs">
+                    {change.delta > 0 ? "+" : ""}
+                    {change.delta} points
+                  </ChangeValue>
+                )}
               </div>
             </div>
             {CHANGE_GROUPS.map(({ kind, label }) => {
@@ -270,7 +277,9 @@ function IcpScorecard({ score, tier, breakdown, scoring, onRecalculate, recalcul
                   {label && <p className="font-medium text-foreground">{label}</p>}
                   <ul className="space-y-1 text-muted-foreground">
                     {items.map((d) => (
-                      <li key={d.text}>{d.text}</li>
+                      <li key={d.text}>
+                        <ChangeText text={d.text} />
+                      </li>
                     ))}
                   </ul>
                 </div>

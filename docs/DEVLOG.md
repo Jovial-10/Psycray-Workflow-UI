@@ -78,6 +78,12 @@ Major changes and decisions, plus what comes next. Newest entries first.
 
 ## Log
 
+### 2026-11-23 · Green/red for increases and decreases
+
+- Any value shown against its previous one is now emerald with ↑ when it goes up and red with ↓ when it goes down (screen readers: "17% (down from 20)"). Shared `ChangeValue` / `ChangeText` components, so it's identical everywhere
+- Applied to: the assistant's proposed weights and baseline, rebalance suggestions and other changes; the preview and simulation (draft score delta, criterion points, baseline, "why it differs" lines); the scorecard's updated tile and change reasons; score history; recalculation results; version history; the publish dialog
+- DESIGN.md: new Change Direction Rule (direction, not good/bad; always with an arrow or sign)
+
 ### 2026-11-23 · Deployed to the Psycray VPS
 
 - **Live:** https://jovial-demo.psycray.com. Psycray's proxy → `127.0.0.1:41040` → `server/server.mjs` (new, dependency-free): serves `dist/` with SPA fallback and forwards `/api/*` to n8n with the secret added server-side. Started by Psycray's existing service (`jovial-demo-ctl`); only `.psycray/web-start.sh` and `web.env` were changed (both backed up first)

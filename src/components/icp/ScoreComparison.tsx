@@ -1,10 +1,11 @@
-import { ArrowRight } from "lucide-react"
+import { ArrowDown, ArrowRight, ArrowUp } from "lucide-react"
 import { FitBadge } from "@/components/research/FitBadge"
 import { QualificationBadge } from "@/components/research/QualificationBadge"
 import type { IcpScoreResult } from "@/lib/scoring/icpEngine"
-import { SIDE } from "@/lib/compare"
+import { SIDE, TREND_INK, trend, type Trend } from "@/lib/compare"
 import { cn } from "@/lib/utils"
 import { SideLabel } from "@/components/common/SideLabel"
+import { ChangeText, ChangeValue } from "@/components/common/ChangeValue"
 
 interface Props {
   before: IcpScoreResult
@@ -49,7 +50,7 @@ export function ScoreComparison({
       <Score side="before" label={beforeLabel} sub={beforeSub} mono={beforeSubMono} score={before.score} tier={before.tier} />
       <ArrowRight aria-hidden className="size-4 self-center text-muted-foreground" />
       {after ? (
-        <Score side="after" label={afterLabel} sub={delta(after.score - before.score)} score={after.score} tier={after.tier} />
+        <Score side="after" label={afterLabel} sub={delta(after.score - before.score)} subTrend={trend(before.score, after.score)} score={after.score} tier={after.tier} />
       ) : (
         <p className="flex items-center rounded-lg border border-dashed border-after-border p-3 text-xs text-muted-foreground">{invalidText}</p>
       )}
@@ -72,7 +73,9 @@ export function ScoreComparison({
               {(after.change?.details ?? [])
                 .filter((d) => d.kind !== "unchanged" && !d.text.startsWith("ICP configuration changed"))
                 .map((d) => (
-                  <li key={d.text}>{d.text}</li>
+                  <li key={d.text}>
+                    <ChangeText text={d.text} />
+                  </li>
                 ))}
               {(after.change?.details ?? []).every((d) => d.kind === "unchanged" || d.text.startsWith("ICP configuration changed")) && (
                 <li>These changes don't affect this company.</li>
@@ -107,8 +110,16 @@ export function ScoreComparison({
                   <td className={cn("px-2 py-1.5 text-right whitespace-nowrap", SIDE.before.cell, SIDE.before.ink)}>
                     {prev.score} / {prev.max}
                   </td>
-                  <td className={cn("px-2 py-1.5 text-right whitespace-nowrap", SIDE.after.cell, changed && cn("font-semibold", SIDE.after.ink))}>
-                    {c.score} / {c.max}
+                  <td className={cn("px-2 py-1.5 text-right whitespace-nowrap", SIDE.after.cell)}>
+                    {changed ? (
+                      <ChangeValue before={prev.score} after={c.score}>
+                        {c.score} / {c.max}
+                      </ChangeValue>
+                    ) : (
+                      <>
+                        {c.score} / {c.max}
+                      </>
+                    )}
                   </td>
                 </tr>
               )
@@ -116,8 +127,8 @@ export function ScoreComparison({
             <tr className="border-t">
               <th scope="row" className="py-1.5 text-left font-normal">Baseline</th>
               <td className={cn("rounded-b-md px-2 py-1.5 text-right whitespace-nowrap", SIDE.before.cell, SIDE.before.ink)}>{before.baseline}</td>
-              <td className={cn("rounded-b-md px-2 py-1.5 text-right whitespace-nowrap", SIDE.after.cell, after.baseline !== before.baseline && cn("font-semibold", SIDE.after.ink))}>
-                {after.baseline}
+              <td className={cn("rounded-b-md px-2 py-1.5 text-right whitespace-nowrap", SIDE.after.cell)}>
+                <ChangeValue before={before.baseline} after={after.baseline}>{after.baseline}</ChangeValue>
               </td>
             </tr>
           </tbody>
@@ -170,8 +181,10 @@ function Score({
   score,
   tier,
   mono,
+  subTrend = "same",
 }: {
   side: keyof typeof SIDE
+  subTrend?: Trend
   label: string
   sub: string
   score: number
@@ -183,7 +196,9 @@ function Score({
       <SideLabel side={side}>{label}</SideLabel>
       <p className={cn("text-2xl font-semibold tracking-tight tabular-nums", SIDE[side].ink)}>{score}</p>
       <FitBadge tier={tier} />
-      <p className={cn("truncate text-xs text-muted-foreground tabular-nums", mono && "font-mono")} title={sub}>
+      <p className={cn("flex items-center gap-0.5 truncate text-xs text-muted-foreground tabular-nums", mono && "font-mono", subTrend !== "same" && cn("font-medium", TREND_INK[subTrend]))} title={sub}>
+        {subTrend === "up" && <ArrowUp aria-hidden className="size-3 shrink-0" />}
+        {subTrend === "down" && <ArrowDown aria-hidden className="size-3 shrink-0" />}
         {sub}
       </p>
     </div>

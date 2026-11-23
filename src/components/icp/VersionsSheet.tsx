@@ -1,6 +1,7 @@
 import { useState } from "react"
 import { Archive, ArchiveRestore, History } from "lucide-react"
 import { Badge } from "@/components/ui/badge"
+import { ChangeText } from "@/components/common/ChangeValue"
 import { Button } from "@/components/ui/button"
 import { Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle, SheetTrigger } from "@/components/ui/sheet"
 import { api } from "@/services/api"
@@ -92,7 +93,9 @@ export function VersionsSheet({ versions, activeId, draftMatches, onLoad, onChan
                 {v.change_summary.length > 0 && (
                   <ul className="list-disc space-y-0.5 pl-4 text-xs text-muted-foreground">
                     {v.change_summary.map((c) => (
-                      <li key={c.text}>{c.text}</li>
+                      <li key={c.text}>
+                        <ChangeText text={c.text} />
+                      </li>
                     ))}
                   </ul>
                 )}

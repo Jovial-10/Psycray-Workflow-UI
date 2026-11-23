@@ -1,6 +1,7 @@
 import { useState } from "react"
 import { Lock, LockOpen, Scale } from "lucide-react"
 import { Button } from "@/components/ui/button"
+import { ChangeText } from "@/components/common/ChangeValue"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Slider } from "@/components/ui/slider"
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip"
@@ -138,7 +139,9 @@ export function WeightsCard({ draft, onChange, previewCriteria, previewName }: W
                     {proposal.changes
                       .filter((c) => !c.startsWith(CRITERIA.find((x) => x.key === anchor)!.label + " "))
                       .map((c) => (
-                        <li key={c}>{c}</li>
+                        <li key={c}>
+                          <ChangeText text={c} />
+                        </li>
                       ))}
                   </ul>
                   <Button size="xs" variant="outline" onClick={() => onChange({ ...draft, weights: proposal.weights })}>

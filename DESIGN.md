@@ -230,6 +230,8 @@ Added 2026-11-22 at the user's request, to make two versions of a score or confi
 
 **The Verdict Palette Rule.** Emerald, amber and red mean High, Moderate and Low Fit (and success, warning, error). Never use them for decoration, and never show Needs Review or "unknown" in a verdict hue; unknown is not failure.
 
+**The Change Direction Rule.** (Added 2026-11-23 at the user's request.) Where a value is shown against its previous value, more is emerald with ↑ and less is red with ↓ (`ChangeValue`, `ChangeText`, `trend()` in `src/lib/compare.ts`). It states direction only, not good or bad, so it applies equally to weights, baselines, criterion points and scores. Always paired with an arrow or a sign and a screen-reader phrase ("down from 20"); unchanged values stay neutral. Used in: the assistant's proposal, preview and simulation tables, change explanations, the scorecard's updated tile, score history, recalculation results, rebalance lists, version history and the publish dialog.
+
 **The Semantic Token Rule.** Components reference semantic tokens only, so light and dark stay in step. A raw `bg-indigo-600` or `text-zinc-500` in a component is a bug.
 
 ## Typography

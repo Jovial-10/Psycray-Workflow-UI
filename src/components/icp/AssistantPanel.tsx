@@ -14,6 +14,7 @@ import { api, ApiError } from "@/services/api"
 import type { CompanyResearchRecord } from "@/types/research"
 import { NumberField } from "./fields"
 import { SideLabel } from "@/components/common/SideLabel"
+import { ChangeText, ChangeValue } from "@/components/common/ChangeValue"
 import { SIDE } from "@/lib/compare"
 import { ScoreComparison } from "./ScoreComparison"
 
@@ -202,7 +203,7 @@ export function AssistantPanel({ draft, onApply, companies, selectedDomain, onSe
                     <tr key={key} className="border-t">
                       <th scope="row" className="py-1.5 text-left font-normal">{label}</th>
                       <td className={cn("px-2.5 py-1.5 text-right", SIDE.before.cell, SIDE.before.ink)}>{now}%</td>
-                      <td className={cn("px-2.5 py-1.5 text-right", SIDE.after.cell, next !== now && cn("font-semibold", SIDE.after.ink))}>
+                      <td className={cn("px-2.5 py-1.5 text-right", SIDE.after.cell)}>
                         {editing ? (
                           <NumberField
                             label={`Proposed ${label} weight`}
@@ -214,7 +215,7 @@ export function AssistantPanel({ draft, onApply, companies, selectedDomain, onSe
                             className="ml-auto w-20"
                           />
                         ) : (
-                          `${next}%`
+                          <ChangeValue before={now} after={next}>{next}%</ChangeValue>
                         )}
                       </td>
                     </tr>
@@ -228,7 +229,7 @@ export function AssistantPanel({ draft, onApply, companies, selectedDomain, onSe
                 <tr className="border-t">
                   <th scope="row" className="py-1.5 text-left font-normal">Baseline</th>
                   <td className={cn("rounded-b-md px-2.5 py-1.5 text-right", SIDE.before.cell, SIDE.before.ink)}>{current.baseline}</td>
-                  <td className={cn("rounded-b-md px-2.5 py-1.5 text-right", SIDE.after.cell, final.baseline !== current.baseline && cn("font-semibold", SIDE.after.ink))}>
+                  <td className={cn("rounded-b-md px-2.5 py-1.5 text-right", SIDE.after.cell)}>
                     {editing ? (
                       <NumberField
                         label="Proposed baseline"
@@ -239,7 +240,7 @@ export function AssistantPanel({ draft, onApply, companies, selectedDomain, onSe
                         className="ml-auto w-20"
                       />
                     ) : (
-                      final.baseline
+                      <ChangeValue before={current.baseline} after={final.baseline}>{final.baseline}</ChangeValue>
                     )}
                   </td>
                 </tr>
@@ -259,7 +260,9 @@ export function AssistantPanel({ draft, onApply, companies, selectedDomain, onSe
                     <p className="text-muted-foreground">Suggested rebalance (keeps the weights you named, scales the rest in proportion):</p>
                     <ul className="space-y-0.5 tabular-nums">
                       {p.rebalance.changes.map((c) => (
-                        <li key={c}>{c}</li>
+                        <li key={c}>
+                          <ChangeText text={c} />
+                        </li>
                       ))}
                     </ul>
                     <Button
@@ -382,7 +385,9 @@ function OtherChanges({ current, next, changes }: { current: IcpConfig; next: Ic
           <p className="font-medium">Other changes</p>
           <ul className="mt-1 list-disc space-y-0.5 pl-4 text-muted-foreground">
             {other.map((c) => (
-              <li key={c.text}>{c.text}</li>
+              <li key={c.text}>
+                <ChangeText text={c.text} />
+              </li>
             ))}
           </ul>
         </div>

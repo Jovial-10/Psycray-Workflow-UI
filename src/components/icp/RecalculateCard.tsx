@@ -2,6 +2,7 @@ import { useState } from "react"
 import { Calculator } from "lucide-react"
 import { Link } from "react-router"
 import { Button } from "@/components/ui/button"
+import { ChangeValue } from "@/components/common/ChangeValue"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { companyPath } from "@/lib/companies"
 import { api } from "@/services/api"
@@ -70,8 +71,11 @@ export function RecalculateCard({ publishedLabel, outdated, legacy, onDone }: Pr
                     <Link to={companyPath(c.domain)} className="truncate font-mono underline decoration-border underline-offset-2 hover:decoration-foreground">
                       {c.domain}
                     </Link>
-                    <span>
-                      {c.previous ?? "—"} → {c.updated}
+                    <span className="inline-flex items-center gap-1">
+                      {c.previous ?? "—"} →{" "}
+                      <ChangeValue before={c.previous} after={c.updated}>
+                        {c.updated}
+                      </ChangeValue>
                     </span>
                   </li>
                 ))}

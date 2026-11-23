@@ -1,6 +1,7 @@
 import { useState } from "react"
 import { Upload } from "lucide-react"
 import { Button } from "@/components/ui/button"
+import { ChangeText } from "@/components/common/ChangeValue"
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog"
 import { Label } from "@/components/ui/label"
 import { Textarea } from "@/components/ui/textarea"
@@ -93,7 +94,9 @@ export function PublishDialog({ active, nextVersion, draft, errors, dirty, onPub
             {changes.length ? (
               <ul className="mt-1 list-disc space-y-0.5 pl-4 text-muted-foreground">
                 {changes.map((c) => (
-                  <li key={c.text}>{c.text}</li>
+                  <li key={c.text}>
+                    <ChangeText text={c.text} />
+                  </li>
                 ))}
               </ul>
             ) : (

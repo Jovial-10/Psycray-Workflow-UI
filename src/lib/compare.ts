@@ -9,3 +9,20 @@ export const SIDE = {
 } as const
 
 export type Side = keyof typeof SIDE
+
+/**
+ * Direction of a change (see DESIGN.md, "Change direction"): more = emerald,
+ * less = red, always with an arrow. It describes direction, not good or bad.
+ */
+export type Trend = "up" | "down" | "same"
+
+export function trend(before: number | null | undefined, after: number | null | undefined): Trend {
+  if (before == null || after == null || Number.isNaN(before) || Number.isNaN(after)) return "same"
+  return after > before ? "up" : after < before ? "down" : "same"
+}
+
+export const TREND_INK: Record<Trend, string> = {
+  up: "text-success-foreground",
+  down: "text-danger-foreground",
+  same: "",
+}

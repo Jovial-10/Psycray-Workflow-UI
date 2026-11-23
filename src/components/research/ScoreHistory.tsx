@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
+import { ChangeValue } from "@/components/common/ChangeValue"
 import { api } from "@/services/api"
 import type { ScoreHistoryEntry } from "@/types/research"
 
@@ -49,7 +50,13 @@ export function ScoreHistory({ domain, refreshKey }: { domain: string; refreshKe
                   <span className="font-medium tabular-nums">{e.score ?? "—"}</span>
                   <span className="text-muted-foreground"> · {TRIGGER[e.trigger]}</span>
                   {e.change?.delta ? (
-                    <span className="text-muted-foreground tabular-nums"> ({e.change.delta > 0 ? "+" : ""}{e.change.delta})</span>
+                    <>
+                      {" "}
+                      <ChangeValue before={0} after={e.change.delta} className="text-xs tabular-nums">
+                        {e.change.delta > 0 ? "+" : ""}
+                        {e.change.delta}
+                      </ChangeValue>
+                    </>
                   ) : null}
                 </span>
                 <span className="text-xs text-muted-foreground">
