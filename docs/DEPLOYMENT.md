@@ -93,13 +93,18 @@ company pages and score history; cached research (4 s); server-side validation (
 ICP Studio with live versions; restart recovery; no secrets in the built files; port 41040
 closed to the internet. No new paid research was run.
 
+## Rotating the webhook secret
+
+Done 2026-11-23 (the old value was a short phrase; now 64 random hex characters). To rotate
+again: generate one (`openssl rand -hex 32`), write it to `web.env` first (the running app
+keeps the old one until restart), update n8n's *X-Psycray-Key* header credential, run
+`sudo jovial-demo-ctl restart` straight away, then update `.env.local`. Check that the app's
+`/api/companies` returns 200 and that a direct webhook call with the old value returns 403.
+
 ## Known issues and risks
 
 - **No access control.** By decision there are no logins (see DEVLOG). The site is public:
   anyone with the URL can run research (spending Exa/OpenAI credits), publish ICP versions and
   recalculate scores. Recommended: Cloudflare Access in front of the site (Psycray admin).
-- **Weak webhook secret.** `N8N_WEBHOOK_SECRET` is a short phrase with spaces, not a random
-  value. Rotate it: generate one (`openssl rand -hex 32`, use the output), set it in the n8n
-  *X-Psycray-Key* credential, `web.env` and `.env.local`, then `sudo jovial-demo-ctl restart`.
 - The Account Briefs page is still a placeholder; briefs open from each company's page.
 - `deploy.sh` never deletes files on the server; files removed from the repo stay there harmlessly.

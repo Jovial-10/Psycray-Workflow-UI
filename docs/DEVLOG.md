@@ -85,7 +85,8 @@ Major changes and decisions, plus what comes next. Newest entries first.
 - **Found during testing:** refreshing `/companies/<domain>` would have returned 404 (the `.com` looked like a file); fixed before deploying. 14 server tests (123 total)
 - **Verified on the hosted app:** every route + refresh, light/dark, live data, cached research (4 s), score history, ICP Studio, server-side validation, restart recovery, no secrets in the bundle, port 41040 closed to the internet
 - **Mistake:** a check of mine sent `POST /api/icp/rescore`, which ran "Recalculate saved companies" with the active v3: abstracttechgroup.com 26 → 10, netflix.shop 10 → 0 (previous scores are in their history; the same as pressing the button in ICP Studio)
-- **Open:** the site is public with no access control; the n8n webhook secret is a short phrase and should be rotated (steps in DEPLOYMENT.md)
+- **Webhook secret rotated** (same day): the old value was a 21-character phrase with spaces; now 64 random hex characters in n8n's *X-Psycray-Key* credential, `web.env` and `.env.local`. Verified: app → n8n 200; direct calls with the old secret or none → 403. Rotation ran with automatic rollback and changed nothing else
+- **Open:** the site is public with no access control (recommended: Cloudflare Access, Psycray admin)
 
 ### 2026-11-22 · Colors for before/after comparisons
 
