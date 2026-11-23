@@ -46,6 +46,8 @@ set, with a "Sample data" notice.
 | `npm run lint`    | Lint with oxlint                                 |
 | `npm test`        | ICP scoring regression tests (`node --test`)     |
 | `npm run sync:n8n` | Regenerate n8n scoring nodes from the engine    |
+| `npm start`       | Production server (serves `dist/`, proxies `/api`) |
+| `deploy/deploy.sh` | Deploy to the VPS ([docs/DEPLOYMENT.md](docs/DEPLOYMENT.md)) |
 
 ---
 

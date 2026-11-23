@@ -14,7 +14,7 @@ How the React app talks to the Psycray Research Agent, and how to set it up.
 Browser (React)
    │  fetch /api/*                      no secrets, same origin
    ▼
-Reverse proxy                           Vite (dev) · nginx (VPS)
+Reverse proxy                           Vite (dev) · server/server.mjs (VPS)
    │  /api/X → <n8n>/webhook/psycray/X
    │  + header  X-Psycray-Key: <secret>
    ▼
@@ -218,35 +218,10 @@ Set `VITE_API_MODE=mock` to work without n8n.
 
 ## Production (VPS)
 
-Build with `npm run build` and serve `dist/` with nginx. The `/api` rule
-does the same job as the Vite proxy:
+Deployed to Psycray's VPS: **https://jovial-demo.psycray.com**. In production the `/api`
+proxy is `server/server.mjs` (not nginx): it serves the built app and forwards `/api/*` to
+`N8N_WEBHOOK_BASE` with the `X-Psycray-Key` header, exactly like the Vite proxy in
+development. Setup, deploy, rollback and diagnostics: [DEPLOYMENT.md](DEPLOYMENT.md).
 
-```nginx
-server {
-    # … listen / server_name / TLS …
-
-    root /var/www/psycray-intelligence/dist;
-
-    location /api/ {
-        limit_except GET POST { deny all; }
-        proxy_pass https://<n8n-host>/webhook/psycray/;
-        proxy_set_header Host <n8n-host>;
-        proxy_set_header X-Psycray-Key "<secret>";
-        proxy_ssl_server_name on;
-        proxy_read_timeout 30s;
-    }
-
-    # Client-side routing
-    location / {
-        try_files $uri /index.html;
-    }
-}
-```
-
-> **Access control happens here, not in the app.** The app has no logins
-> (your decision, 2026-11-22), so anyone who can reach the URL can run
-> research (spending Exa/OpenAI credits) and publish ICP versions. Restrict the
-> site at nginx: an IP allowlist for the office/VPN (`allow <office-ip>;
-> deny all;` in the `location /` and `location /api/` blocks), or HTTP basic
-> auth, or keep the VPS on a private network/VPN. The `X-Psycray-Key` header
-> stays: it stops anyone calling the n8n webhooks directly.
+> **Access control.** The app has no logins (your decision, 2026-11-22) and the site is
+> public. Restrict it in front of the app, e.g. Cloudflare Access (Psycray admin).

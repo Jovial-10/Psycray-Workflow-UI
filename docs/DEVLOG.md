@@ -53,7 +53,7 @@ Major changes and decisions, plus what comes next. Newest entries first.
 - [ ] Account Briefs page: browse and open past briefs
 - [ ] Structured brief: confirmed facts vs inferences, signals with dates, source per claim
 - [x] Access control: **no logins or admin keys** (your decision, 2026-11-22). Restrict access at nginx/VPS instead (see INTEGRATION.md → Production)
-- [ ] Deploy to the Psycray VPS (nginx config in [INTEGRATION.md](INTEGRATION.md#production-vps)). **Waiting** on VPS details from you
+- [x] Deployed to the Psycray VPS: https://jovial-demo.psycray.com (see [DEPLOYMENT.md](DEPLOYMENT.md))
 
 ### Later
 
@@ -77,6 +77,15 @@ Major changes and decisions, plus what comes next. Newest entries first.
 ---
 
 ## Log
+
+### 2026-11-23 · Deployed to the Psycray VPS
+
+- **Live:** https://jovial-demo.psycray.com. Psycray's proxy → `127.0.0.1:41040` → `server/server.mjs` (new, dependency-free): serves `dist/` with SPA fallback and forwards `/api/*` to n8n with the secret added server-side. Started by Psycray's existing service (`jovial-demo-ctl`); only `.psycray/web-start.sh` and `web.env` were changed (both backed up first)
+- **Process:** read-only inspection → backup → copy (git-tracked files only) → `npm ci` + build on the server → rehearsal on a loopback port → deactivate / switch start script / activate. Downtime: seconds. `deploy/deploy.sh` and `deploy/rollback.sh` now do this in one command each (validated with a second deploy)
+- **Found during testing:** refreshing `/companies/<domain>` would have returned 404 (the `.com` looked like a file); fixed before deploying. 14 server tests (123 total)
+- **Verified on the hosted app:** every route + refresh, light/dark, live data, cached research (4 s), score history, ICP Studio, server-side validation, restart recovery, no secrets in the bundle, port 41040 closed to the internet
+- **Mistake:** a check of mine sent `POST /api/icp/rescore`, which ran "Recalculate saved companies" with the active v3: abstracttechgroup.com 26 → 10, netflix.shop 10 → 0 (previous scores are in their history; the same as pressing the button in ICP Studio)
+- **Open:** the site is public with no access control; the n8n webhook secret is a short phrase and should be rotated (steps in DEPLOYMENT.md)
 
 ### 2026-11-22 · Colors for before/after comparisons
 
